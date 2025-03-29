@@ -2,24 +2,36 @@ package com.axalotl.async;
 
 import com.axalotl.async.config.AsyncConfig;
 import com.axalotl.async.parallelised.ConcurrentCollections;
+import com.google.common.collect.Streams;
+import com.mojang.logging.LogUtils;
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.Bootstrap;
 import net.minecraft.entity.*;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.entity.vehicle.*;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.dedicated.MinecraftDedicatedServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.Util;
 import net.minecraft.util.crash.CrashReport;
+import net.minecraft.util.crash.CrashReportSection;
+import net.minecraft.util.crash.ReportType;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.SpawnHelper;
 import net.minecraft.world.chunk.WorldChunk;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+import static net.minecraft.server.dedicated.DedicatedServerWatchdog.createCrashReport;
 
 public class ParallelProcessor {
     private static final Logger LOGGER = LogManager.getLogger(ParallelProcessor.class);
@@ -167,8 +179,8 @@ public class ParallelProcessor {
                         futuresList.toArray(new CompletableFuture[0])
                 );
 
-                allTasks.orTimeout(30, TimeUnit.SECONDS).exceptionally(ex -> {
-                    server.setCrashReport(new CrashReport("Timeout during entity tick processing", ex));
+                allTasks.orTimeout(((MinecraftDedicatedServer) server).getMaxTickTime(), TimeUnit.MILLISECONDS).exceptionally(ex -> {
+                    crash("Timeout during entity tick processing: ", ex);
                     return null;
                 });
 
@@ -177,8 +189,7 @@ public class ParallelProcessor {
                     world.getChunkManager().mainThreadExecutor.runTasks(allTasks::isDone);
                 });
             } catch (CompletionException e) {
-                server.setCrashReport(new CrashReport("Critical error during entity tick processing", e));
-                server.shutdown();
+                crash("Critical error during entity tick processing: ", e);
             }
         }
     }
@@ -194,6 +205,62 @@ public class ParallelProcessor {
                 tickPool.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    public static void crash(String message, Throwable throwable) {
+        String errorMessage = message + throwable.getMessage();
+        LOGGER.error(errorMessage, LogUtils.FATAL_MARKER);
+        CrashReport crashReport = createCrashReport("Watching Server", server.getThread().threadId());
+        server.addSystemDetails(crashReport.getSystemDetailsSection());
+        CrashReportSection crashReportSection = crashReport.addElement("Performance stats");
+        crashReportSection.add(
+                "Random tick rate", () -> server.getSaveProperties().getGameRules().get(GameRules.RANDOM_TICK_SPEED).toString()
+        );
+
+        CrashReportSection threadDumpSection = crashReport.addElement("Async thread dump");
+        threadDumpSection.add("All Threads", () -> {
+            StringBuilder sb = new StringBuilder();
+            Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
+            for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
+                Thread t = entry.getKey();
+                sb.append(String.format("\"%s\" [%s]%n", t.getName(), t.getState()));
+                for (StackTraceElement ste : entry.getValue()) {
+                    sb.append("\tat ").append(ste).append("\n");
+                }
+                sb.append("\n");
+            }
+            return sb.toString();
+        });
+
+        crashReportSection.add(
+                "Level stats",
+                () -> Streams.stream(server.getWorlds())
+                        .map(world -> world.getRegistryKey().getValue() + ": " + world.getDebugString())
+                        .collect(Collectors.joining(",\n"))
+        );
+        Bootstrap.println("Crash report:\n" + crashReport.asString(ReportType.MINECRAFT_CRASH_REPORT));
+        Path path = server.getRunDirectory().resolve("crash-reports").resolve("crash-" + Util.getFormattedCurrentTime() + "-server.txt");
+        if (crashReport.writeToFile(path, ReportType.MINECRAFT_CRASH_REPORT)) {
+            LOGGER.error("This crash report has been saved to: {}", path.toAbsolutePath());
+        } else {
+            LOGGER.error("We were unable to save this crash report to disk.");
+        }
+
+        shutdown();
+    }
+
+    private static void shutdown() {
+        try {
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                public void run() {
+                    Runtime.getRuntime().halt(1);
+                }
+            }, 10000L);
+            System.exit(1);
+        } catch (Throwable var2) {
+            Runtime.getRuntime().halt(1);
         }
     }
 
