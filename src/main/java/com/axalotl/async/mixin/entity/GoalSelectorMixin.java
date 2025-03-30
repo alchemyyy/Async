@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
 
 @Mixin(GoalSelector.class)
 public abstract class GoalSelectorMixin {
@@ -29,17 +30,24 @@ public abstract class GoalSelectorMixin {
         this.goals = ConcurrentCollections.newHashSet();
     }
 
-    @WrapMethod(method = "tickGoals")
-    private void tickGoals(boolean tickAll, Operation<Void> original) {
-        synchronized (lock) {
-            original.call(tickAll);
-        }
-    }
-
     @WrapMethod(method = "remove")
     private void remove(Goal goal, Operation<Void> original) {
         synchronized (lock) {
             original.call(goal);
+        }
+    }
+
+    @WrapMethod(method = "add")
+    private void add(int priority, Goal goal, Operation<Void> original) {
+        synchronized (lock) {
+            original.call(priority, goal);
+        }
+    }
+
+    @WrapMethod(method = "clear")
+    private void clear(Predicate<Goal> predicate, Operation<Void> original) {
+        synchronized (lock) {
+            original.call(predicate);
         }
     }
 }
