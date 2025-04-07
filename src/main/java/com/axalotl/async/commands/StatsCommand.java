@@ -55,17 +55,12 @@ public class StatsCommand {
     }
 
     private static void showGeneralStats(ServerCommandSource source) {
-        int availableProcessors = AsyncConfig.getParallelism();
         double avgThreads = calculateAverageThreads();
-        double threadUtilization = (avgThreads / availableProcessors) * 100.0;
 
         MutableText message = prefix.copy()
                 .append(Text.literal("Performance Statistics ").styled(style -> style.withColor(Formatting.GOLD)))
-                .append(Text.literal("\nActive Processing Threads: ").styled(style -> style.withColor(Formatting.WHITE)))
-                .append(Text.literal(DECIMAL_FORMAT.format(avgThreads)).styled(style -> style.withColor(Formatting.GREEN)))
-                .append(Text.literal(" / " + availableProcessors).styled(style -> style.withColor(Formatting.GRAY)))
-                .append(Text.literal("\nThread Utilization: ").styled(style -> style.withColor(Formatting.WHITE)))
-                .append(Text.literal(DECIMAL_FORMAT.format(threadUtilization) + "%").styled(style -> style.withColor(Formatting.GREEN)))
+                .append(Text.literal("\nAverage Active Processing Threads: ").styled(style -> style.withColor(Formatting.WHITE)))
+                .append(Text.literal(DECIMAL_FORMAT.format(Math.ceil(avgThreads))).styled(style -> style.withColor(Formatting.GREEN)))
                 .append(Text.literal("\nAsync Status: ").styled(style -> style.withColor(Formatting.WHITE)))
                 .append(Text.literal(AsyncConfig.disabled ? "Disabled" : "Enabled").styled(style ->
                         style.withColor(AsyncConfig.disabled ? Formatting.RED : Formatting.GREEN)));
