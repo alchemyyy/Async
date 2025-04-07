@@ -1,7 +1,6 @@
 package com.axalotl.async;
 
 import com.axalotl.async.config.AsyncConfig;
-import com.axalotl.async.parallelised.ConcurrentCollections;
 import com.google.common.collect.Streams;
 import com.mojang.logging.LogUtils;
 import lombok.Getter;
@@ -45,8 +44,8 @@ public class ParallelProcessor {
     private static ExecutorService tickPool;
     private static final Queue<CompletableFuture<?>> taskQueue = new ConcurrentLinkedQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
-    private static final ConcurrentHashMap<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
-    private static final Map<String, Set<Thread>> mcThreadTracker = ConcurrentCollections.newHashMap();
+    private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+    private static final Map<String, Set<Thread>> mcThreadTracker = new ConcurrentHashMap<>();
     private static final Set<Class<?>> specialEntities = Set.of(
             FallingBlockEntity.class
     );
