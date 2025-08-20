@@ -98,7 +98,6 @@ public abstract class LivingEntityMixin extends Entity {
         if (blockState == null) cir.setReturnValue(false);
     }
 
-    // ========== НОВЫЕ МЕТОДЫ ДЛЯ ПОТОКОБЕЗОПАСНОСТИ ЭФФЕКТОВ ==========
 
     @WrapMethod(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z")
     private boolean wrapAddEffect(MobEffectInstance effect, Entity source, Operation<Boolean> original) {
