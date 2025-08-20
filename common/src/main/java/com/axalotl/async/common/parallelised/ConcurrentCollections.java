@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collector; // Импортируем Collector напрямую
 import java.util.stream.Collectors;
 
 /**
@@ -13,6 +14,10 @@ import java.util.stream.Collectors;
  * Provides convenient methods to create concurrent collections with standard interfaces.
  */
 public class ConcurrentCollections {
+
+    private ConcurrentCollections() {
+        throw new AssertionError("No instances"); // Запрещаем создание экземпляров
+    }
 
     /**
      * Creates a new thread-safe set
@@ -40,8 +45,10 @@ public class ConcurrentCollections {
      *
      * @param <T> the type of elements in the list
      * @return a collector that accumulates elements into a CopyOnWriteArrayList
+     * @implNote Use CopyOnWriteArrayList when iterations vastly outnumber modifications.
+     *           For frequent modifications, other concurrent list implementations might be more suitable.
      */
-    public static <T> java.util.stream.Collector<T, ?, List<T>> toList() {
+    public static <T> Collector<T, ?, List<T>> toList() {
         return Collectors.toCollection(CopyOnWriteArrayList::new);
     }
 }

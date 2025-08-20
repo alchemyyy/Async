@@ -1,3 +1,4 @@
+// common/src/main/java/com/axalotl/async/common/mixin/entity/LivingEntityMixin.java
 package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -95,5 +96,28 @@ public abstract class LivingEntityMixin extends Entity {
     private void isClimbing(CallbackInfoReturnable<Boolean> cir) {
         BlockState blockState = this.getInBlockState();
         if (blockState == null) cir.setReturnValue(false);
+    }
+
+    // ========== НОВЫЕ МЕТОДЫ ДЛЯ ПОТОКОБЕЗОПАСНОСТИ ЭФФЕКТОВ ==========
+
+    @WrapMethod(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z")
+    private boolean wrapAddEffect(MobEffectInstance effect, Entity source, Operation<Boolean> original) {
+        synchronized (async$lock) {
+            return original.call(effect, source);
+        }
+    }
+
+    @WrapMethod(method = "removeEffect")
+    private boolean wrapRemoveEffect(Holder<MobEffect> effect, Operation<Boolean> original) {
+        synchronized (async$lock) {
+            return original.call(effect);
+        }
+    }
+
+    @WrapMethod(method = "removeAllEffects")
+    private boolean wrapRemoveAllEffects(Operation<Boolean> original) {
+        synchronized (async$lock) {
+            return original.call();
+        }
     }
 }
