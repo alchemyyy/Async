@@ -4,6 +4,8 @@
   "package": "com.axalotl.async.neoforge.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "create.ElevatorColumnMixin",
+    "server.LevelCaptureBlockSnapshotsMixin",
     "server.ServerWatchdogMixin",
     "utils.ClassInstanceMultiMapMixin",
     "utils.UtilMixin"
