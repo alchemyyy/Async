@@ -1,32 +1,45 @@
 package com.axalotl.async.common.mixin.servercore;
 
-import it.unimi.dsi.fastutil.objects.ReferenceLinkedOpenHashSet;
+import net.minecraft.server.level.ServerChunkCache;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Set;
 
 /**
- * Fixes ConcurrentModificationException in ServerCore's broadcast cache
+ * Синхронизирует ServerCore broadcastCache
  */
-@Mixin(targets = "net.minecraft.server.level.ServerChunkCache")
+@Mixin(value = ServerChunkCache.class, priority = 2000)
 public class ServerChunkCacheBroadcastMixin {
 
-    /**
-     * Wrap newly created ReferenceLinkedOpenHashSet with synchronizedSet
-     */
-    @ModifyVariable(
-            method = "<init>",
-            at = @At("STORE"),
-            ordinal = 0,
-            require = 0
-    )
-    private Set<?> wrapBlockChangesSet(Set<?> original) {
-        if (original instanceof ReferenceLinkedOpenHashSet) {
-            return Collections.synchronizedSet(original);
+    @Inject(method = "<init>", at = @At("RETURN"), require = 0)
+    private void wrapBroadcastCache(CallbackInfo ci) {
+        try {
+            Field field = asyncMultiloader$findField(this.getClass());
+            if (field != null) {
+                field.setAccessible(true);
+                Set<?> original = (Set<?>) field.get(this);
+                if (original != null) {
+                    field.set(this, Collections.synchronizedSet(original));
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @Unique
+    private static Field asyncMultiloader$findField(Class<?> clazz) {
+        while (clazz != null) {
+            try {
+                return clazz.getDeclaredField("servercore$broadcastCache");
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
         }
-        return original;
+        return null;
     }
 }

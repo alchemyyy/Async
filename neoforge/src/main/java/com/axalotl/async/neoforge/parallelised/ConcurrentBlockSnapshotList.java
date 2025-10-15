@@ -11,10 +11,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-/**
- * 100% потокобезопасный ArrayList с ReadWriteLock.
- * ВСЕ публичные методы переопределены и защищены блокировками.
- */
+
 public class ConcurrentBlockSnapshotList extends ArrayList<BlockSnapshot> {
 
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
