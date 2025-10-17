@@ -4,6 +4,7 @@
   "package": "com.axalotl.async.common.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "create.BeltInventoryMixin",
     "entity.AllayMixin",
     "entity.AnimalMixin",
     "entity.AreaEffectCloudMixin",
@@ -55,7 +56,6 @@
     "server.ServerChunkCacheMixin",
     "server.ServerLevelEntityCallbacksMixin",
     "server.ServerPlayerMixin",
-    "servercore.ServerChunkCacheBroadcastMixin",
     "utils.FastUtilsMixin",
     "utils.LockHelperMixin",
     "utils.ShufflingListMixin",
