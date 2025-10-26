@@ -92,6 +92,7 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     private void overwriteEntityTicking(EntityTickList entityTickList, Consumer<Entity> consumer) {
         ProfilerFiller profilerfiller = Profiler.get();
         this.entityTickList.forEach(entity -> {
+            if (entity == null) return;
             if (!entity.isRemoved()) {
                 if (!this.tickRateManager().isEntityFrozen(entity)) {
                     profilerfiller.push("checkDespawn");

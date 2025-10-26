@@ -21,7 +21,7 @@ import static net.minecraft.commands.Commands.literal;
 public class ConfigCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> registerConfig(LiteralArgumentBuilder<CommandSourceStack> root) {
         return root.then(literal("config")
-                .then(literal("toggle").requires(cmdSrc -> cmdSrc.hasPermission(4)).executes(cmdCtx -> {
+                .then(literal("toggle").requires(cmdSrc -> cmdSrc.getServer().isSingleplayer() || cmdSrc.hasPermission(4)).executes(cmdCtx -> {
                     AsyncConfig.disabled = !AsyncConfig.disabled;
                     PlatformEvents.getInstance().saveConfig();
                     MutableComponent message = prefix.copy().append(Component.literal("Async is now ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
@@ -30,7 +30,7 @@ public class ConfigCommand {
                     return 1;
                 }))
                 .then(literal("synchronizedEntities")
-                        .requires(cmdSrc -> cmdSrc.hasPermission(4))
+                        .requires(cmdSrc -> cmdSrc.getServer().isSingleplayer() || cmdSrc.hasPermission(4))
                         .executes(cmdCtx -> {
                             Set<ResourceLocation> currentValue = AsyncConfig.synchronizedEntities;
                             MutableComponent message = prefix.copy().append(Component.literal("Synchronized Entities: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)));
@@ -90,7 +90,7 @@ public class ConfigCommand {
                                             cmdCtx.getSource().sendSuccess(() -> message, true);
                                             return 1;
                                         }))))
-                .then(literal("setAsyncEntitySpawn").requires(cmdSrc -> cmdSrc.hasPermission(4))
+                .then(literal("setAsyncEntitySpawn").requires(cmdSrc -> cmdSrc.getServer().isSingleplayer() || cmdSrc.hasPermission(4))
                         .executes(cmdCtx -> {
                             boolean currentValue = AsyncConfig.enableAsyncSpawn;
                             MutableComponent message = prefix.copy().append(Component.literal("Current value of async entity spawn: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
@@ -108,7 +108,7 @@ public class ConfigCommand {
                             return 1;
                         }))
                 )
-                .then(literal("setAsyncRandomTicks").requires(cmdSrc -> cmdSrc.hasPermission(4))
+                .then(literal("setAsyncRandomTicks").requires(cmdSrc -> cmdSrc.getServer().isSingleplayer() || cmdSrc.hasPermission(4))
                         .executes(cmdCtx -> {
                             boolean currentValue = AsyncConfig.enableAsyncRandomTicks;
                             MutableComponent message = prefix.copy().append(Component.literal("Current value of async random ticks: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
