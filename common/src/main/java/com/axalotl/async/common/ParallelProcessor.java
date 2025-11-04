@@ -1,5 +1,6 @@
 package com.axalotl.async.common;
 
+import com.axalotl.async.common.c2me.C2MEIntegration;
 import com.axalotl.async.common.config.AsyncConfig;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,6 +42,8 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+    private static final Map<Long, Long> unavailableChunks = new ConcurrentHashMap<>();
+    private static final long CHUNK_RECHECK_INTERVAL = 100; // Перепроверять каждые 100 тиков
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
@@ -83,22 +86,52 @@ public class ParallelProcessor {
     public static void callEntityTick(ServerLevel world, Entity entity) {
         if (shouldTickSynchronously(entity)) {
             tickSynchronously(world, entity);
-        } else {
-            if (!tickPool.isShutdown() && !tickPool.isTerminated()) {
-                CompletableFuture<Void> future = CompletableFuture.runAsync(() ->
-                        performAsyncEntityTick(world, entity), tickPool
-                ).exceptionally(e -> {
-                    logEntityError("Error in async tick, switching to synchronous", entity, e);
-                    tickSynchronously(world, entity);
-                    blacklistedEntity.add(entity.getUUID());
-                    return null;
-                });
-                taskQueue.add(future);
-            } else {
-                logEntityError("Rejected task due to ExecutorService shutdown", entity, null);
-                tickSynchronously(world, entity);
-            }
+            return;
         }
+
+        // ========== БЫСТРАЯ ПРОВЕРКА С КЕШЕМ ==========
+        ChunkPos chunkPos = entity.chunkPosition();
+        long chunkKey = chunkPos.toLong();
+        long currentTick = world.getGameTime();
+
+        // Проверяем кеш недоступных чанков
+        Long lastCheckTick = unavailableChunks.get(chunkKey);
+        if (lastCheckTick != null && (currentTick - lastCheckTick) < CHUNK_RECHECK_INTERVAL) {
+            // Чанк был недоступен недавно - пропускаем
+            return;
+        }
+
+        // Быстрая неблокирующая проверка через C2ME/vanilla
+        if (!C2MEIntegration.isChunkReadyForEntityTicking(world, entity)) {
+            // Чанк не готов - запоминаем и пропускаем
+            unavailableChunks.put(chunkKey, currentTick);
+            return;
+        }
+
+        // Чанк готов - убираем из кеша если был там
+        unavailableChunks.remove(chunkKey);
+        // ===============================================
+
+        if (!tickPool.isShutdown() && !tickPool.isTerminated()) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() ->
+                    performAsyncEntityTick(world, entity), tickPool
+            ).exceptionally(e -> {
+                logEntityError("Error in async tick, switching to synchronous", entity, e);
+                tickSynchronously(world, entity);
+                blacklistedEntity.add(entity.getUUID());
+                return null;
+            });
+            taskQueue.add(future);
+        } else {
+            logEntityError("Rejected task due to ExecutorService shutdown", entity, null);
+            tickSynchronously(world, entity);
+        }
+    }
+
+    public static void cleanupChunkCache(long currentTick) {
+        unavailableChunks.entrySet().removeIf(entry ->
+                (currentTick - entry.getValue()) > CHUNK_RECHECK_INTERVAL * 10
+        );
     }
 
     public static boolean shouldTickSynchronously(Entity entity) {

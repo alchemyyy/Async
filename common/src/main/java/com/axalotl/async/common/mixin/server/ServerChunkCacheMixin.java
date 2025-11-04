@@ -1,13 +1,11 @@
 package com.axalotl.async.common.mixin.server;
 
-import com.axalotl.async.common.AsyncCommon;
 import com.axalotl.async.common.ParallelProcessor;
 import net.minecraft.server.level.*;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkSource;
-import net.minecraft.world.level.chunk.ImposterProtoChunk;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
@@ -37,36 +35,23 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
     @Final
     public ServerLevel level;
 
-    @Inject(method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
-            at = @At("HEAD"), cancellable = true)
-    private void shortcutGetChunk(int x, int z, ChunkStatus leastStatus, boolean create, CallbackInfoReturnable<ChunkAccess> cir) {
-        if (AsyncCommon.LITHIUM) return;
-        if (Thread.currentThread() != this.mainThread) {
-            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(x, z));
-            if (holder != null) {
-                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(leastStatus, this.chunkMap);
-                if (future.isDone()) {
-                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
-                    if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
-                    if (chunk != null) {
-                        cir.setReturnValue(chunk);
-                        return;
-                    }
-                }
-            }
-        }
-    }
+    // УБИРАЕМ ВЕСЬ @Inject для shortcutGetChunk - он был источником проблем!
+    // Если нужна оптимизация чтения - делаем её менее агрессивной:
 
     @Inject(method = "getChunkNow", at = @At("HEAD"), cancellable = true)
     private void shortcutGetChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
+        // Только для чтения (getChunkNow не создаёт чанки)
         if (Thread.currentThread() != this.mainThread) {
             final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(chunkX, chunkZ));
             if (holder != null) {
-                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
-                ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
-                if (chunk instanceof LevelChunk worldChunk) {
-                    cir.setReturnValue(worldChunk);
-                    return;
+                final CompletableFuture<ChunkResult<ChunkAccess>> future =
+                        holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
+                if (future.isDone()) {
+                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                    if (chunk instanceof LevelChunk worldChunk) {
+                        cir.setReturnValue(worldChunk);
+                        return;
+                    }
                 }
             }
         }

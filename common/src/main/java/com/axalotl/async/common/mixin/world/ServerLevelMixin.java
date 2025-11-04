@@ -94,6 +94,10 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"))
     private void overwriteEntityTicking(EntityTickList entityTickList, Consumer<Entity> consumer) {
         ProfilerFiller profiler = this.getProfiler();
+        long currentTick = this.getGameTime();
+        if (currentTick % 200 == 0) {
+            ParallelProcessor.cleanupChunkCache(currentTick);
+        }
         this.entityTickList.forEach(entity -> {
             if (!entity.isRemoved()) {
                 if (this.shouldDiscardEntity(entity)) {
