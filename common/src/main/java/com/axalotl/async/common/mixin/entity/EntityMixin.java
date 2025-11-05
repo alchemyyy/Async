@@ -41,6 +41,7 @@ public abstract class EntityMixin {
         if (blockState == null && this.level() instanceof ServerLevel serverLevel) {
             BlockPos pos = this.blockPosition();
 
+            // ТОЛЬКО читаем, НЕ создаем чанк
             LevelChunk chunk = serverLevel.getChunkSource()
                     .getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
 
@@ -48,13 +49,7 @@ public abstract class EntityMixin {
                 return chunk.getBlockState(pos);
             }
 
-            ChunkAccess access = serverLevel.getChunkSource()
-                    .getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL, true);
-
-            if (access instanceof LevelChunk levelChunk) {
-                return levelChunk.getBlockState(pos);
-            }
-
+            // Чанк не загружен - возвращаем AIR
             return Blocks.AIR.defaultBlockState();
         }
 

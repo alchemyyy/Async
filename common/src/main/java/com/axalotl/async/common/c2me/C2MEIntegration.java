@@ -1,17 +1,20 @@
-// common/src/main/java/com/axalotl/async/common/c2me/C2MEIntegration.java
 package com.axalotl.async.common.c2me;
 
 import net.minecraft.server.level.ChunkHolder;
+import net.minecraft.server.level.ChunkLevel;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 
 /**
- * Прямая интеграция с C2ME для проверки статуса чанков
+ * Интеграция с C2ME для асинхронной загрузки чанков
  */
 public class C2MEIntegration {
     private static final boolean C2ME_AVAILABLE;
@@ -23,11 +26,10 @@ public class C2MEIntegration {
             Class.forName("com.ishland.c2me.rewrites.chunksystem.common.NewChunkStatus");
             available = true;
 
-            // Пытаемся получить метод для проверки статуса
             Class<?> holderClass = ChunkHolder.class;
             GET_CHUNK_STATUS_METHOD = holderClass.getMethod("getChunkStatus");
         } catch (ClassNotFoundException | NoSuchMethodException e) {
-            // C2ME не установлен или версия несовместима
+            // C2ME не установлен
         }
         C2ME_AVAILABLE = available;
     }
@@ -38,14 +40,13 @@ public class C2MEIntegration {
 
     /**
      * Быстрая неблокирующая проверка готовности чанка для entity ticking
-     * Использует C2ME статусы если доступно, иначе vanilla логику
      */
     public static boolean isChunkReadyForEntityTicking(ServerLevel world, Entity entity) {
         ChunkPos chunkPos = entity.chunkPosition();
         ChunkHolder holder = world.getChunkSource().getVisibleChunkIfPresent(chunkPos.toLong());
 
         if (holder == null) {
-            return false; // Чанк вообще не загружен
+            return false;
         }
 
         if (C2ME_AVAILABLE) {
@@ -56,44 +57,56 @@ public class C2MEIntegration {
     }
 
     /**
-     * Проверка через C2ME API - ОЧЕНЬ быстро, без блокировки
+     * 🎯 ГЛАВНЫЙ МЕТОД - для Lithium миксина!
+     *
+     * КРИТИЧНО: НЕ вызывает holder.getChunkIfPresent() чтобы избежать рекурсии!
+     * Просто запрашивает загрузку и возвращает null.
+     */
+    @Nullable
+    public static ChunkAccess requestAsyncChunkLoad(ServerLevel world, int chunkX, int chunkZ, ChunkStatus status) {
+        ChunkPos chunkPos = new ChunkPos(chunkX, chunkZ);
+        ServerChunkCache chunkSource = world.getChunkSource();
+
+        // 🎯 ПРОСТО запрашиваем загрузку через публичный API
+        // C2ME перехватит через свои миксины!
+        chunkSource.mainThreadProcessor.execute(() -> {
+            chunkSource.addRegionTicket(
+                    TicketType.UNKNOWN,
+                    chunkPos,
+                    ChunkLevel.byStatus(status),
+                    chunkPos
+            );
+        });
+
+        // Возвращаем null - чанк загрузится в фоне
+        // Entity пропустит тик, в следующем тике чанк готов!
+        return null;
+    }
+
+    /**
+     * Проверка через C2ME API
      */
     private static boolean isChunkReadyC2ME(ChunkHolder holder) {
         try {
-            // В C2ME есть прямой доступ к статусу без создания Future
             Object status = GET_CHUNK_STATUS_METHOD.invoke(holder);
 
-            // Проверяем что статус >= ENTITY_TICKING
-            // В C2ME: ENTITY_TICKING имеет ordinal больше чем SERVER_ACCESSIBLE
             if (status != null) {
-                Method ordinalMethod = status.getClass().getMethod("ordinal");
-                int ordinal = (int) ordinalMethod.invoke(status);
-
-                // ENTITY_TICKING обычно имеет ordinal >= 6 в C2ME
-                // Но лучше проверить через toChunkLevelType()
                 Method levelTypeMethod = status.getClass().getMethod("toChunkLevelType");
                 Object levelType = levelTypeMethod.invoke(status);
 
-                // Если тип ENTITY_TICKING или выше - можно тикать
                 return "ENTITY_TICKING".equals(levelType.toString());
             }
         } catch (Exception e) {
-            // Fallback на vanilla если что-то пошло не так
             return isChunkReadyVanilla(holder);
         }
-
         return false;
     }
 
     /**
-     * Vanilla проверка - медленнее, но работает всегда
+     * Vanilla проверка
      */
     private static boolean isChunkReadyVanilla(ChunkHolder holder) {
-        // Проверяем уровень чанка без создания Future
-        // getTickingChunkFuture возвращает закешированный future
         var future = holder.getTickingChunkFuture();
-
-        // Проверяем ТОЛЬКО isDone, не вызываем get/join
         return future.isDone() && future.getNow(ChunkHolder.UNLOADED_LEVEL_CHUNK).isSuccess();
     }
 }
