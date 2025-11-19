@@ -4,6 +4,7 @@
   "package": "com.axalotl.async.common.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "c2me.ServerChunkCacheMixin",
     "create.BeltInventoryMixin",
     "entity.AllayMixin",
     "entity.AnimalMixin",
@@ -46,6 +47,8 @@
     "entity.sensor.PlayersSensorMixin",
     "entity.spawn.LocalMobCapCalculatorMixin",
     "entity.spawn.PotentialCalculatorMixin",
+    "lithium.LithiumHashPaletteConcurrentMixin",
+    "lithium.LithiumLevelChunkTickersMixin",
     "lithium.LithiumServerChunkCacheMixin",
     "lithium.LithiumServerLevel",
     "server.ChunkMapMixin",

@@ -1,8 +1,10 @@
 package com.axalotl.async.common.mixin.world;
 
+import com.axalotl.async.common.parallelised.fastutil.Long2LongConcurrentHashMap;
 import com.axalotl.async.common.parallelised.fastutil.Long2ObjectConcurrentHashMap;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import net.minecraft.world.ticks.LevelChunkTicks;
 import net.minecraft.world.ticks.LevelTickAccess;
@@ -14,11 +16,14 @@ public abstract class LevelTicksMixin<T> implements LevelTickAccess<T> {
     @Shadow
     private final Long2ObjectMap<LevelChunkTicks<T>> allContainers = new Long2ObjectConcurrentHashMap<>();
 
+    @Shadow
+    private final Long2LongMap nextTickForContainer = new Long2LongConcurrentHashMap(Long.MAX_VALUE);
+
     @Unique
     private static final Object async$lock = new Object();
 
     @WrapMethod(method = "sortContainersToTick")
-    private void sortContainersToTick(long gameTime, Operation<Void> original) {
+    private void updateStatus(long gameTime, Operation<Void> original) {
         synchronized (async$lock) {
             original.call(gameTime);
         }

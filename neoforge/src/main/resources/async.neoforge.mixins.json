@@ -6,6 +6,7 @@
   "mixins": [
     "server.LevelCaptureBlockSnapshotsMixin",
     "server.ServerWatchdogMixin",
+    "utils.ChunkLoadTricksMixin",
     "utils.ClassInstanceMultiMapMixin",
     "utils.UtilMixin"
   ],
@@ -13,6 +14,5 @@
   "server": [],
   "injectors": {
     "defaultRequire": 1
-  },
-  "plugin": "com.axalotl.async.neoforge.mixin.utils.SynchronisePlugin"
+  }
 }

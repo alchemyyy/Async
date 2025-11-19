@@ -6,6 +6,7 @@ import com.axalotl.async.common.parallelised.ConcurrentCollections;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.particles.ParticleOptions;
@@ -40,6 +41,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
@@ -94,10 +96,6 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"))
     private void overwriteEntityTicking(EntityTickList entityTickList, Consumer<Entity> consumer) {
         ProfilerFiller profiler = this.getProfiler();
-        long currentTick = this.getGameTime();
-        if (currentTick % 200 == 0) {
-            ParallelProcessor.cleanupChunkCache(currentTick);
-        }
         this.entityTickList.forEach(entity -> {
             if (!entity.isRemoved()) {
                 if (this.shouldDiscardEntity(entity)) {
@@ -162,14 +160,36 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
         }
     }
 
+    @Unique
+    private final ConcurrentHashMap<LevelChunk, ConcurrentLinkedQueue<BlockPos>> async$chunkDeferredUpdates = new ConcurrentHashMap<>();
+
     @WrapMethod(method = "tickChunk")
     private void tickChunk(LevelChunk chunk, int randomTickSpeed, Operation<Void> original) {
         if (!AsyncConfig.disabled && AsyncConfig.enableAsyncRandomTicks) {
-            CompletableFuture.runAsync(() -> original.call(chunk, randomTickSpeed), ParallelProcessor.tickPool).exceptionally(e -> {
-                ParallelProcessor.LOGGER.error("Error in async random ticks, switching to synchronous", e);
-                original.call(chunk, randomTickSpeed);
-                return null;
-            });
+            ConcurrentLinkedQueue<BlockPos> deferredUpdates = new ConcurrentLinkedQueue<>();
+            async$chunkDeferredUpdates.put(chunk, deferredUpdates);
+
+            CompletableFuture.runAsync(() -> {
+                        original.call(chunk, randomTickSpeed);
+                    }, ParallelProcessor.tickPool)
+                    .whenComplete((result, error) -> {
+                        if (error != null) {
+                            ParallelProcessor.LOGGER.error("Error in async random ticks", error);
+                        }
+                        // Flush на main thread
+                        this.getServer().execute(() -> {
+                            try {
+                                BlockPos pos;
+                                while ((pos = deferredUpdates.poll()) != null) {
+                                    this.chunkSource.blockChanged(pos);
+                                }
+                            } catch (Exception e) {
+                                ParallelProcessor.LOGGER.error("Error flushing deferred block changes", e);
+                            } finally {
+                                async$chunkDeferredUpdates.remove(chunk);
+                            }
+                        });
+                    });
         } else {
             original.call(chunk, randomTickSpeed);
         }

@@ -14,6 +14,7 @@ public class AsyncConfig {
     public static int paraMax = -1;
     public static boolean enableAsyncSpawn = true;
     public static boolean enableAsyncRandomTicks = false;
+    public static boolean debugLogging = false;
 
     public static Set<ResourceLocation> synchronizedEntities = getDefaultSynchronizedEntities();
 
