@@ -3,7 +3,7 @@ package com.axalotl.async.common.mixin.entity;
 import com.axalotl.async.common.parallelised.ConcurrentCollections;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import org.spongepowered.asm.mixin.Final;
@@ -23,15 +23,15 @@ public class AttributeInstanceMixin {
     @Shadow
     @Final
     @Mutable
-    private Map<Identifier, AttributeModifier> modifierById;
+    private Map<ResourceLocation, AttributeModifier> modifierById;
 
     @Shadow
     @Final
     @Mutable
-    private Map<Identifier, AttributeModifier> permanentModifiers;
+    private Map<ResourceLocation, AttributeModifier> permanentModifiers;
 
     @Shadow
-    private final Map<AttributeModifier.Operation, Map<Identifier, AttributeModifier>> modifiersByOperation = ConcurrentCollections.newHashMap();
+    private final Map<AttributeModifier.Operation, Map<ResourceLocation, AttributeModifier>> modifiersByOperation = ConcurrentCollections.newHashMap();
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void makeThreadSafe(CallbackInfo ci) {
@@ -40,7 +40,7 @@ public class AttributeInstanceMixin {
     }
 
     @WrapMethod(method = "getModifiers(Lnet/minecraft/world/entity/ai/attributes/AttributeModifier$Operation;)Ljava/util/Map;")
-    private Map<Identifier, AttributeModifier> getModifiersConcurrent(AttributeModifier.Operation operation, Operation<Map<Identifier, AttributeModifier>> original) {
+    private Map<ResourceLocation, AttributeModifier> getModifiersConcurrent(AttributeModifier.Operation operation, Operation<Map<ResourceLocation, AttributeModifier>> original) {
         return modifiersByOperation.computeIfAbsent(operation, op -> ConcurrentCollections.newHashMap());
     }
 }
