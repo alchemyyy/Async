@@ -10,7 +10,7 @@ pluginManagement {
                 }
             }
             filter {
-                includeGroupByRegex("net\\.fabricmc(\\..+)?") // 💡 захватывает net.fabricmc и всё внутри, включая unpick
+                includeGroupByRegex("net\\.fabricmc(\\..+)?")
                 includeGroup('fabric-loom')
             }
         }
@@ -33,7 +33,48 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
 }
 
-// This should match the folder name of the project, or else IDEA may complain (see https://youtrack.jetbrains.com/issue/IDEA-317606)
+// =============================================================================
+// Multi-Version Resolution
+// =============================================================================
+// Resolves version group from target_minecraft_version and loads properties
+// so all build scripts can access version-specific dependency coordinates.
+// =============================================================================
+
+def targetVersion = settings.ext.has('target_minecraft_version')
+        ? settings.ext.target_minecraft_version.toString()
+        : '1.21.11'
+
+// Parse minor version number (e.g., "1.21.11" -> 11, "1.21.1" -> 1)
+def parts = targetVersion.split('\\.')
+int minor = (parts.length >= 3) ? (parts[2] as int) : 11
+
+String versionGroup
+if (minor <= 1) versionGroup = 'v1_21_1'
+else if (minor <= 5) versionGroup = 'v1_21_4'
+else if (minor <= 10) versionGroup = 'v1_21_8'
+else versionGroup = 'v1_21_11'
+
+// Load version-specific properties
+def versionPropsFile = file("versions/${versionGroup}.properties")
+if (versionPropsFile.exists()) {
+    def versionProps = new Properties()
+    versionPropsFile.withInputStream { versionProps.load(it) }
+
+    // Check for exact-version override (e.g., v1_21_10.properties when group is v1_21_8)
+    def exactMinorFile = file("versions/v1_21_${minor}.properties")
+    if (exactMinorFile.exists() && exactMinorFile.canonicalPath != versionPropsFile.canonicalPath) {
+        exactMinorFile.withInputStream { versionProps.load(it) }
+    }
+
+    // Inject version properties into gradle ext so all build scripts can access them
+    versionProps.each { k, v ->
+        gradle.ext.set(k.toString(), v.toString())
+    }
+}
+
+gradle.ext.set('versionGroup', versionGroup)
+
+// This should match the folder name of the project, or else IDEA may complain
 rootProject.name = 'AsyncMultiloader'
 include('common')
 include('fabric')

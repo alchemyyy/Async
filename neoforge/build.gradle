@@ -6,6 +6,15 @@ plugins {
     id "com.modrinth.minotaur" version "2.+"
 }
 
+// Resolve version group for source set selection
+def versionGroup = gradle.ext.versionGroup
+
+// Add version-specific source directories
+sourceSets.main {
+    java.srcDirs += "src/${versionGroup}/java"
+    resources.srcDirs += "src/${versionGroup}/resources"
+}
+
 repositories {
     maven { url 'https://api.modrinth.com/maven' }
 }
@@ -19,7 +28,7 @@ modrinth {
     versionType = "alpha"
     def libsDir = layout.buildDirectory.dir("libs").get().asFile
     uploadFile = libsDir.listFiles().find { it.name.endsWith(".jar") }
-    gameVersions = ["1.21.9", "1.21.10"]
+    gameVersions = [minecraft_version]
     loaders = ["neoforge"]
     dependencies {
         optional.project "lithium"
@@ -32,15 +41,19 @@ modrinth {
 
 neoForge {
     version = neoforge_version
-    // Automatically enable neoforge AccessTransformers if the file exists
-    def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
-    if (at.exists()) {
-        accessTransformers.from(at.absolutePath)
+
+    // Check version-specific AT first, fall back to common main
+    def versionAt = project(':common').file("src/${versionGroup}/resources/META-INF/accesstransformer.cfg")
+    def mainAt = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    def atFile = versionAt.exists() ? versionAt : mainAt
+    if (atFile.exists()) {
+        accessTransformers.from(atFile.absolutePath)
     }
+
     runs {
         configureEach {
             systemProperty("neoforge.enabledGameTestNamespaces", mod_id.toString())
-            ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})"
         }
         client {
             client()

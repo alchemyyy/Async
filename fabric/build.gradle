@@ -6,6 +6,15 @@ plugins {
     id 'java-library'
 }
 
+// Resolve version group for source set selection
+def versionGroup = gradle.ext.versionGroup
+
+// Add version-specific source directories
+sourceSets.main {
+    java.srcDirs += "src/${versionGroup}/java"
+    resources.srcDirs += "src/${versionGroup}/resources"
+}
+
 repositories {
     maven { url 'https://api.modrinth.com/maven' }
 }
@@ -19,7 +28,7 @@ modrinth {
     versionType = "alpha"
     def libsDir = layout.buildDirectory.dir("libs").get().asFile
     uploadFile = libsDir.listFiles().find { it.name.endsWith(".jar") }
-    gameVersions = ["1.21.9", "1.21.10"]
+    gameVersions = [minecraft_version]
     loaders = ["fabric", "quilt"]
     dependencies {
         required.project "fabric-api"
@@ -60,11 +69,15 @@ dependencies {
 
 loom {
     mixin.useLegacyMixinAp = true
-    def aw = project(':common').file("src/main/resources/async.accesswidener")
-    accessWidenerPath.set(project(":common").file("src/main/resources/async.accesswidener"))
-    if (aw.exists()) {
-        accessWidenerPath.set(aw)
+
+    // Check version-specific AW first, fall back to main
+    def versionAw = project(':common').file("src/${versionGroup}/resources/async.accesswidener")
+    def mainAw = project(':common').file("src/main/resources/async.accesswidener")
+    def awFile = versionAw.exists() ? versionAw : mainAw
+    if (awFile.exists()) {
+        accessWidenerPath.set(awFile)
     }
+
     mixin {
         defaultRefmapName.set("async.refmap.json")
     }

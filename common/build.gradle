@@ -3,13 +3,20 @@ plugins {
     id 'idea'
 }
 
+// Resolve version group for source set selection
+def versionGroup = gradle.ext.versionGroup
+
 neoForge {
     neoFormVersion = neoform_version
-    // Automatically enable AccessTransformers if the file exists
-    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
-    if (at.exists()) {
-        accessTransformers.from(at.absolutePath)
+
+    // Check version-specific AT first, fall back to main
+    def versionAt = file("src/${versionGroup}/resources/META-INF/accesstransformer.cfg")
+    def mainAt = file('src/main/resources/META-INF/accesstransformer.cfg')
+    def atFile = versionAt.exists() ? versionAt : mainAt
+    if (atFile.exists()) {
+        accessTransformers.from(atFile.absolutePath)
     }
+
     if (project.hasProperty('parchment_mappings_version') && project.hasProperty('parchment_minecraft_version')) {
         def parchmentMappings = project.parchment_mappings_version
         def parchmentMinecraft = project.parchment_minecraft_version
@@ -23,6 +30,12 @@ neoForge {
             }
         }
     }
+}
+
+// Add version-specific source directories
+sourceSets.main {
+    java.srcDirs += "src/${versionGroup}/java"
+    resources.srcDirs += "src/${versionGroup}/resources"
 }
 
 repositories {
@@ -42,6 +55,7 @@ dependencies {
     implementation "maven.modrinth:lithium:${lithium_version}-neoforge"
 }
 
+// Expose source directories for consumption by fabric/neoforge modules
 configurations {
     commonJava {
         canBeResolved = false
@@ -53,7 +67,18 @@ configurations {
     }
 }
 
-artifacts {
-    commonJava sourceSets.main.java.sourceDirectories.singleFile
-    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+// Register ALL source directories (main + version) as artifacts
+sourceSets.main.java.sourceDirectories.each { dir ->
+    if (dir.exists()) {
+        artifacts {
+            commonJava dir
+        }
+    }
+}
+sourceSets.main.resources.sourceDirectories.each { dir ->
+    if (dir.exists()) {
+        artifacts {
+            commonResources dir
+        }
+    }
 }
