@@ -1,10 +1,12 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.axalotl.async.fabric.mixin",
-  "refmap": "${mod_id}.refmap.json",
+  "package": "com.axalotl.async.neoforge.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["utils.ClassInstanceMultiMapMixin"],
+  "mixins": [
+    "server.ServerWatchdogMixin",
+    "utils.UtilMixin"
+  ],
   "client": [],
   "server": [],
   "injectors": {

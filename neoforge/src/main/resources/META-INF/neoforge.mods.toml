@@ -14,7 +14,11 @@ description = '''${description}'''
 [[mixins]]
 config = "${mod_id}.common.mixins.json"
 [[mixins]]
+config = "${mod_id}.version.mixins.json"
+[[mixins]]
 config = "${mod_id}.neoforge.mixins.json"
+[[mixins]]
+config = "${mod_id}.neoforge.version.mixins.json"
 
 [[dependencies.${ mod_id }]]
 modId = "minecraft"
