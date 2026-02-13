@@ -2,14 +2,12 @@ package com.axalotl.async.common.mixin.server;
 
 import com.axalotl.async.common.ParallelProcessor;
 import com.axalotl.async.common.config.AsyncConfig;
-import com.axalotl.async.common.parallelised.fastutil.ConcurrentLongLinkedOpenHashSet;
 import com.axalotl.async.common.parallelised.fastutil.Int2ObjectConcurrentHashMap;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.mojang.datafixers.DataFixer;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.server.level.ChunkGenerationTask;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.server.level.ChunkMap;
@@ -45,11 +43,6 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
 
     @Shadow
     @Final
-    @Mutable
-    private LongSet chunksToEagerlySave;
-
-    @Shadow
-    @Final
     private ChunkMap.DistanceManager distanceManager;
 
     @Shadow
@@ -63,7 +56,6 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
     private void replaceConVars(CallbackInfo ci) {
         entityMap = new Int2ObjectConcurrentHashMap<>();
         pendingGenerationTasks = new CopyOnWriteArrayList<>();
-        chunksToEagerlySave = new ConcurrentLongLinkedOpenHashSet();
     }
 
     @WrapMethod(method = "addEntity")
@@ -89,7 +81,19 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
     @WrapMethod(method = "forEachBlockTickingChunk")
     private void forEachBlockTickingChunk(Consumer<LevelChunk> action, Operation<Void> original) {
         if (!AsyncConfig.disabled && AsyncConfig.enableAsyncRandomTicks) {
-            // Snapshot chunk positions for thread-safe iteration
+            CompletableFuture.runAsync(() -> original.call(action), ParallelProcessor.tickPool).exceptionally(e -> {
+                ParallelProcessor.LOGGER.error("Error in async random tick, switching to synchronous", e);
+                original.call(action);
+                return null;
+            });
+        } else {
+            original.call(action);
+        }
+    }
+
+    @WrapMethod(method = "forEachBlockTickingChunk")
+    private void forEachBlockTicking(Consumer<LevelChunk> action, Operation<Void> original) {
+        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncRandomTicks) {
             List<Long> keys = new ArrayList<>();
             distanceManager.forEachEntityTickingChunk(keys::add);
 
@@ -97,20 +101,7 @@ public abstract class ChunkMapMixin extends ChunkStorage implements ChunkHolder.
                 ChunkHolder holder = visibleChunkMap.get(chunkPos);
                 if (holder != null) {
                     LevelChunk chunk = holder.getTickingChunk();
-                    if (chunk != null) {
-                        CompletableFuture<Void> future = CompletableFuture.runAsync(
-                                () -> {
-                                    if (chunk.getLevel() != null) {
-                                        action.accept(chunk);
-                                    }
-                                },
-                                ParallelProcessor.tickPool
-                        ).exceptionally(e -> {
-                            ParallelProcessor.LOGGER.error("Error in async random tick", e);
-                            return null;
-                        });
-                        ParallelProcessor.addTask(future);
-                    }
+                    if (chunk != null) action.accept(chunk);
                 }
             }
         } else {
