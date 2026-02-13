@@ -32,7 +32,6 @@
     "world.BlockMixin",
     "world.CollectingNeighborUpdaterMixin",
     "world.LevelChunkMixin",
-    "world.RandomSequencesMixin",
     "world.ScoreboardMixin"
   ],
   "client": [],
