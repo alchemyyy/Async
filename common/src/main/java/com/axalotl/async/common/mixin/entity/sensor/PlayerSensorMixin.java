@@ -1,4 +1,4 @@
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 package com.axalotl.async.common.mixin.entity.sensor;
 
 import com.axalotl.async.common.config.AsyncConfig;
@@ -45,6 +45,6 @@ public class PlayerSensorMixin {
 }
 #else
 package com.axalotl.async.common.mixin.entity.sensor;
-// Stub — only exists in 1.21.11+
+// Stub -- only exists in 1.21.10+
 public class PlayerSensorMixin {}
 #endif

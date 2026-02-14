@@ -1,8 +1,8 @@
 package com.axalotl.async.common.mixin.lithium;
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 
-// This mixin does not exist in 1.21.11 -- stub only.
+// This mixin does not exist in 1.21.10+ -- stub only.
 public class LithiumServerChunkCacheMixin {
 }
 
@@ -344,4 +344,4 @@ public abstract class LithiumServerChunkCacheMixin extends ChunkSource {
     }
 }
 
-#endif // MC_VER_1_21_11
+#endif // MC_VER_1_21_11 || MC_VER_1_21_10

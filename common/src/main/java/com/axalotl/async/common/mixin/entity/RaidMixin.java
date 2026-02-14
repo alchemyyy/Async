@@ -3,7 +3,7 @@ package com.axalotl.async.common.mixin.entity;
 import com.axalotl.async.common.parallelised.ConcurrentCollections;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-#if MC_VER_1_21_8 || MC_VER_1_21_11
+#if !(MC_VER_1_21_1 || MC_VER_1_21_4)
 import net.minecraft.server.level.ServerLevel;
 #endif
 import net.minecraft.world.entity.raid.Raid;

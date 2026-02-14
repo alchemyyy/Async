@@ -1,11 +1,6 @@
 package com.axalotl.async.common.mixin.entity.breed;
 
 import net.minecraft.world.entity.ai.goal.BreedGoal;
-#if MC_VER_1_21_11
-import net.minecraft.world.entity.animal.fox.Fox;
-#else
-import net.minecraft.world.entity.animal.Fox;
-#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,6 +9,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+#if MC_VER_1_21_11
+import net.minecraft.world.entity.animal.fox.Fox;
+#else
+import net.minecraft.world.entity.animal.Fox;
+#endif
 
 @Mixin(Fox.FoxBreedGoal.class)
 public abstract class FoxBreedGoalMixin extends BreedGoal {

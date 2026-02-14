@@ -1,4 +1,4 @@
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 package com.axalotl.async.common.mixin.lithium;
 
 import net.caffeinemc.mods.lithium.common.block.BlockStateFlagHolder;
@@ -154,6 +154,6 @@ public class LithiumRandomTickMixin {
 }
 #else
 package com.axalotl.async.common.mixin.lithium;
-// Stub — only exists in 1.21.11+
+// Stub — only exists in 1.21.10+
 public class LithiumRandomTickMixin {}
 #endif

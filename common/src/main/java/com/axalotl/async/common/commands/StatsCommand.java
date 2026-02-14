@@ -10,10 +10,10 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-import net.minecraft.resources.ResourceLocation;
-#elif MC_VER_1_21_11
+#if MC_VER_1_21_11
 import net.minecraft.resources.Identifier;
+#else
+import net.minecraft.resources.ResourceLocation;
 #endif
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityType;
@@ -165,10 +165,10 @@ public class StatsCommand {
                             int count = entry.getValue();
                             int asyncCnt = asyncEntityTypeCounts.getOrDefault(type, 0);
 
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-                            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
-#elif MC_VER_1_21_11
+#if MC_VER_1_21_11
                             Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+#else
+                            ResourceLocation id = BuiltInRegistries.ENTITY_TYPE.getKey(type);
 #endif
                             String name = id.getPath();
 

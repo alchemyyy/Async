@@ -11,37 +11,36 @@ import net.minecraft.world.level.entity.EntitySection;
 import net.minecraft.world.level.entity.EntitySectionStorage;
 import org.spongepowered.asm.mixin.*;
 
-#if MC_VER_1_21_11
+import java.util.Objects;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 #endif
 
-import java.util.Objects;
-import java.util.stream.LongStream;
-import java.util.stream.Stream;
-
 @Mixin(value = EntitySectionStorage.class)
 public abstract class EntitySectionStorageMixin<T extends EntityAccess> {
 
     @Shadow
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Final
     @Mutable
     #endif
     private Long2ObjectMap<EntitySection<T>> sections
-    #if !MC_VER_1_21_11
+    #if !MC_VER_1_21_11 && !MC_VER_1_21_10
     = new Long2ObjectConcurrentHashMap<>()
     #endif
     ;
 
     @Shadow
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Final
     @Mutable
     #endif
     private LongSortedSet sectionIds
-    #if !MC_VER_1_21_11
+    #if !MC_VER_1_21_11 && !MC_VER_1_21_10
     = new ConcurrentLongSortedSet()
     #endif
     ;
@@ -49,7 +48,7 @@ public abstract class EntitySectionStorageMixin<T extends EntityAccess> {
     @Shadow
     public abstract LongStream getExistingSectionPositionsInChunk(long pos);
 
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Unique
     private final Object async$Lock = new Object();
 

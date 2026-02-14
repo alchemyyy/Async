@@ -1,47 +1,27 @@
 package com.axalotl.async.common.mixin.world;
 
 import com.axalotl.async.common.ParallelProcessor;
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_11
 import com.axalotl.async.common.config.AsyncConfig;
-#endif
 import com.axalotl.async.common.parallelised.ConcurrentCollections;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
-#if MC_VER_1_21_11
-import net.minecraft.core.particles.ExplosionParticleInfo;
-#endif
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-#if MC_VER_1_21_1
 import net.minecraft.util.profiling.ProfilerFiller;
-#else
-import net.minecraft.util.profiling.Profiler;
-import net.minecraft.util.profiling.ProfilerFiller;
-#endif
-#if MC_VER_1_21_11
-import net.minecraft.util.random.WeightedList;
-#endif
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-#if MC_VER_1_21_1
-import net.minecraft.world.level.*;
-#else
 import net.minecraft.world.level.BlockEventData;
 import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.WorldGenLevel;
-#endif
-#if MC_VER_1_21_1 || MC_VER_1_21_4
-import net.minecraft.world.level.chunk.LevelChunk;
-#endif
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.entity.EntityTickList;
 import net.minecraft.world.level.storage.WritableLevelData;
@@ -61,15 +41,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-#if MC_VER_1_21_1 || MC_VER_1_21_4
-import java.util.concurrent.CompletableFuture;
-#endif
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 #if MC_VER_1_21_1
+import net.minecraft.world.level.Explosion;
 import java.util.function.Supplier;
+#else
+import net.minecraft.util.profiling.Profiler;
+#if MC_VER_1_21_11 || MC_VER_1_21_10
+import net.minecraft.core.particles.ExplosionParticleInfo;
+import net.minecraft.util.random.WeightedList;
+#endif
 #endif
 
 @SuppressWarnings("all")
@@ -128,37 +112,17 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"))
     private void overwriteEntityTicking(EntityTickList entityTickList, Consumer<Entity> consumer) {
 #if MC_VER_1_21_1
-        ProfilerFiller profiler = this.getProfiler();
-        this.entityTickList.forEach(entity -> {
-            if (entity != null && !entity.isRemoved()) {
-                if (this.shouldDiscardEntity(entity)) {
-                    entity.discard();
-                } else if (!this.tickRateManager().isEntityFrozen(entity)) {
-                    profiler.push("checkDespawn");
-                    ParallelProcessor.asyncDespawn(entity);
-                    profiler.pop();
-                    if (this.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) {
-                        Entity entity2 = entity.getVehicle();
-                        if (entity2 != null) {
-                            if (!entity2.isRemoved() && entity2.hasPassenger(entity)) {
-                                return;
-                            }
-                            entity.stopRiding();
-                        }
-                        profiler.push("tick");
-                        ParallelProcessor.callEntityTick(this.getLevel(), entity);
-                        profiler.pop();
-                    }
-                }
-            }
-        });
-        profiler.push("tick");
-        ParallelProcessor.postEntityTick();
-        profiler.pop();
+        ProfilerFiller profilerfiller = this.getProfiler();
 #else
         ProfilerFiller profilerfiller = Profiler.get();
+#endif
         this.entityTickList.forEach(entity -> {
             if (entity != null && !entity.isRemoved()) {
+#if MC_VER_1_21_1
+                if (this.shouldDiscardEntity(entity)) {
+                    entity.discard();
+                } else
+#endif
                 if (!this.tickRateManager().isEntityFrozen(entity)) {
                     profilerfiller.push("checkDespawn");
                     ParallelProcessor.asyncDespawn(entity);
@@ -181,7 +145,6 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
         profilerfiller.push("tick");
         ParallelProcessor.postEntityTick();
         profilerfiller.pop();
-#endif
     }
 
     @Redirect(method = "blockEvent", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;add(Ljava/lang/Object;)Z", remap = false))
@@ -213,7 +176,6 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     private void skipSendBlockUpdatedCheck(ServerLevel instance, boolean value) {
     }
 
-#if MC_VER_1_21_11
     @WrapMethod(method = "addFreshEntity")
     private boolean wrapAddFreshEntity(Entity entity, Operation<Boolean> original) {
         if (AsyncConfig.disabled || !AsyncConfig.enableAsyncSpawn) {
@@ -225,7 +187,6 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
         }
     }
 
-#endif
 #if MC_VER_1_21_1
     @WrapMethod(method = "explode")
     private Explosion createExplosion(@Nullable Entity source, @Nullable DamageSource damageSource, @Nullable ExplosionDamageCalculator damageCalculator, double x, double y, double z, float radius, boolean fire, Level.ExplosionInteraction explosionInteraction, ParticleOptions smallExplosionParticles, ParticleOptions largeExplosionParticles, Holder<SoundEvent> explosionSound, Operation<Explosion> original) {
@@ -233,7 +194,7 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
             return original.call(source, damageSource, damageCalculator, x, y, z, radius, fire, explosionInteraction, smallExplosionParticles, largeExplosionParticles, explosionSound);
         }
     }
-#elif MC_VER_1_21_11
+#elif MC_VER_1_21_11 || MC_VER_1_21_10
     @WrapMethod(method = "explode")
     private void createExplosion(
             @Nullable Entity source,
@@ -266,21 +227,6 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     private void createExplosion(@Nullable Entity source, @Nullable DamageSource damageSource, @Nullable ExplosionDamageCalculator damageCalculator, double x, double y, double z, float radius, boolean fire, Level.ExplosionInteraction explosionInteraction, ParticleOptions smallExplosionParticles, ParticleOptions largeExplosionParticles, Holder<SoundEvent> explosionSound, Operation<Void> original) {
         synchronized (lock) {
             original.call(source, damageSource, damageCalculator, x, y, z, radius, fire, explosionInteraction, smallExplosionParticles, largeExplosionParticles, explosionSound);
-        }
-    }
-#endif
-
-#if MC_VER_1_21_1 || MC_VER_1_21_4
-    @WrapMethod(method = "tickChunk")
-    private void tickChunk(LevelChunk chunk, int randomTickSpeed, Operation<Void> original) {
-        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncRandomTicks) {
-            CompletableFuture.runAsync(() -> original.call(chunk, randomTickSpeed), ParallelProcessor.tickPool).exceptionally(e -> {
-                ParallelProcessor.LOGGER.error("Error in async random ticks, switching to synchronous", e);
-                original.call(chunk, randomTickSpeed);
-                return null;
-            });
-        } else {
-            original.call(chunk, randomTickSpeed);
         }
     }
 #endif

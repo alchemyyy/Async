@@ -6,19 +6,16 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
-import it.unimi.dsi.fastutil.longs.LongSet;
-#endif
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.SectionStorage;
 import org.spongepowered.asm.mixin.Mixin;
-#if MC_VER_1_21_1
-import org.spongepowered.asm.mixin.Mutable;
-#endif
 import org.spongepowered.asm.mixin.Shadow;
 
 import java.util.Optional;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if MC_VER_1_21_1
+import org.spongepowered.asm.mixin.Mutable;
+#else
+import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.concurrent.CompletableFuture;
 #endif
 
@@ -49,13 +46,10 @@ public abstract class SectionStorageMixin<R, P> implements AutoCloseable {
 
 #if MC_VER_1_21_1
     @WrapMethod(method = "readColumn(Lnet/minecraft/world/level/ChunkPos;)V")
-    private synchronized void release(ChunkPos chunkPos, Operation<Void> original) {
-        original.call(chunkPos);
-    }
 #else
     @WrapMethod(method = "unpackChunk(Lnet/minecraft/world/level/ChunkPos;)V")
+#endif
     private synchronized void release(ChunkPos pos, Operation<Void> original) {
         original.call(pos);
     }
-#endif
 }

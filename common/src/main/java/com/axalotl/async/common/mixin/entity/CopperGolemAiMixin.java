@@ -1,12 +1,17 @@
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.ai.behavior.TransportItemsBetweenContainers;
+#if MC_VER_1_21_11
 import net.minecraft.world.entity.animal.golem.CopperGolemAi;
 import net.minecraft.world.entity.animal.golem.CopperGolemState;
+#elif MC_VER_1_21_10
+import net.minecraft.world.entity.animal.coppergolem.CopperGolemAi;
+import net.minecraft.world.entity.animal.coppergolem.CopperGolemState;
+#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
@@ -33,6 +38,6 @@ public class CopperGolemAiMixin {
 }
 #else
 package com.axalotl.async.common.mixin.entity;
-// Stub — only exists in 1.21.11+
+// Stub -- only exists in 1.21.10+
 public class CopperGolemAiMixin {}
 #endif

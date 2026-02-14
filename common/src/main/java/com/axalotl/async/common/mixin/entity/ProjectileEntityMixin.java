@@ -1,4 +1,4 @@
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if !MC_VER_1_21_1
 package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -25,6 +25,6 @@ public class ProjectileEntityMixin {
 }
 #else
 package com.axalotl.async.common.mixin.entity;
-// Stub — only exists in 1.21.4+
+// Stub -- only exists in 1.21.4+
 public class ProjectileEntityMixin {}
 #endif

@@ -2,28 +2,24 @@ package com.axalotl.async.common.mixin.world;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-#if MC_VER_1_21_1
-import net.minecraft.core.Holder;
-import net.minecraft.core.particles.ParticleOptions;
-import net.minecraft.sounds.SoundEvent;
-#endif
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
-#if MC_VER_1_21_1
-import net.minecraft.world.level.Explosion;
-#endif
 import net.minecraft.world.level.ExplosionDamageCalculator;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
-#if MC_VER_1_21_1
-import net.minecraft.world.phys.Vec3;
-#endif
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
+#if MC_VER_1_21_1
+import net.minecraft.core.Holder;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.phys.Vec3;
+#endif
 
 @Mixin(value = Level.class, priority = 1500)
 public abstract class LevelMixin implements LevelAccessor, AutoCloseable {
@@ -82,7 +78,7 @@ public abstract class LevelMixin implements LevelAccessor, AutoCloseable {
             return original.call(source, damageSource, damageCalculator, x, y, z, radius, fire, explosionInteraction, spawnParticles, smallExplosionParticles, largeExplosionParticles, explosionSound);
         }
     }
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     @WrapMethod(method = "explode(Lnet/minecraft/world/entity/Entity;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V")
     private void explode(Entity source, double x, double y, double z, float radius, boolean fire, Level.ExplosionInteraction explosionInteraction, Operation<Void> original) {
         synchronized (async$lock) {

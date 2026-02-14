@@ -2,17 +2,18 @@ package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
-import net.minecraft.server.level.ServerLevel;
-#endif
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-import net.minecraft.world.entity.animal.Fox;
-#elif MC_VER_1_21_11
-import net.minecraft.world.entity.animal.fox.Fox;
-#endif
 import net.minecraft.world.entity.item.ItemEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
+#if MC_VER_1_21_11
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.animal.fox.Fox;
+#elif MC_VER_1_21_1
+import net.minecraft.world.entity.animal.Fox;
+#else
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.animal.Fox;
+#endif
 
 @Mixin(Fox.class)
 public class FoxMixin {
@@ -29,7 +30,7 @@ public class FoxMixin {
             }
         }
     }
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
         synchronized (async$lock) {
             if (!entity.isRemoved()) {

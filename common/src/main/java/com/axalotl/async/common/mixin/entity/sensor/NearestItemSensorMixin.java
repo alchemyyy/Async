@@ -1,35 +1,29 @@
 package com.axalotl.async.common.mixin.entity.sensor;
 
-#if MC_VER_1_21_11
-import com.axalotl.async.common.config.AsyncConfig;
-#endif
 import net.minecraft.server.level.ServerLevel;
-#if !MC_VER_1_21_11
-import net.minecraft.world.entity.Entity;
-#endif
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.sensing.NearestItemSensor;
 import net.minecraft.world.entity.item.ItemEntity;
-#if !MC_VER_1_21_11
-import net.minecraft.world.phys.Vec3;
-#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.Comparator;
-#if !MC_VER_1_21_11
-import java.util.HashMap;
-#else
-import java.util.IdentityHashMap;
-#endif
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
+#if MC_VER_1_21_11 || MC_VER_1_21_10
+import com.axalotl.async.common.config.AsyncConfig;
+import java.util.IdentityHashMap;
+#else
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import java.util.HashMap;
+#endif
 
 @Mixin(value = NearestItemSensor.class, priority = 1500)
 public class NearestItemSensorMixin {
 
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Redirect(method = "doTick(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/Mob;)V",
             at = @At(value = "INVOKE", target = "Ljava/util/Comparator;comparingDouble(Ljava/util/function/ToDoubleFunction;)Ljava/util/Comparator;"))
     private <T extends ItemEntity> Comparator<T> async$safeComparator(ToDoubleFunction<? super T> keyExtractor,

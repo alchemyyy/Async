@@ -8,7 +8,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.world.level.entity.EntityAccess;
 import net.minecraft.world.level.entity.EntityLookup;
 import org.slf4j.Logger;
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import org.slf4j.LoggerFactory;
 #endif
 import org.spongepowered.asm.mixin.Final;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-#if !MC_VER_1_21_11
+#if !(MC_VER_1_21_11 || MC_VER_1_21_10)
 import org.spongepowered.asm.mixin.injection.Redirect;
 #endif
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @Mixin(EntityLookup.class)
 public abstract class EntityLookupMixin<T extends EntityAccess> {
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     private static final Logger LOGGER = LoggerFactory.getLogger("Async EntityLookup");
 #endif
 
@@ -48,7 +48,7 @@ public abstract class EntityLookupMixin<T extends EntityAccess> {
         byUuid = ConcurrentCollections.newHashMap();
     }
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     @Inject(method = "add", at = @At("HEAD"), cancellable = true)
     private void threadSafeAdd(T entity, CallbackInfo ci) {
         ci.cancel();

@@ -7,7 +7,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 #endif
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if !MC_VER_1_21_1
 import net.minecraft.server.level.ServerLevel;
 #endif
 import net.minecraft.tags.BlockTags;
@@ -30,7 +30,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 #endif
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import java.util.ArrayList;
 import java.util.List;
 #elif MC_VER_1_21_8
@@ -46,7 +46,7 @@ public abstract class LivingEntityMixin extends Entity {
     @Shadow
     final private Map<Holder<MobEffect>, MobEffectInstance> activeEffects = new ConcurrentHashMap<>();
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     @Shadow
     protected abstract void onEffectUpdated(MobEffectInstance effect, boolean reapply, Entity source);
 
@@ -80,16 +80,9 @@ public abstract class LivingEntityMixin extends Entity {
 
 #if MC_VER_1_21_1 || MC_VER_1_21_4
     @WrapMethod(method = "blockedByShield")
-    private synchronized void knockback(LivingEntity defender, Operation<Void> original) {
+    private void knockback(LivingEntity defender, Operation<Void> original) {
         synchronized (async$lock) {
             original.call(defender);
-        }
-    }
-#elif MC_VER_1_21_8
-    @WrapMethod(method = "knockback")
-    private synchronized void knockback(double strength, double x, double z, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(strength, x, z);
         }
     }
 #else
@@ -101,7 +94,7 @@ public abstract class LivingEntityMixin extends Entity {
     }
 #endif
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     @WrapMethod(method = "tickEffects")
     private void tickStatusEffects(Operation<Void> original) {
         synchronized (async$lock) {

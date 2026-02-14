@@ -8,15 +8,14 @@ import net.minecraft.world.level.entity.EntitySection;
 import net.minecraft.world.level.entity.Visibility;
 import org.spongepowered.asm.mixin.*;
 
-#if MC_VER_1_21_11
+import java.util.Objects;
+import java.util.stream.Stream;
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.concurrent.atomic.AtomicReference;
 #endif
-
-import java.util.Objects;
-import java.util.stream.Stream;
 
 @Mixin(EntitySection.class)
 public class EntitySectionMixin<T extends EntityAccess> {
@@ -26,12 +25,12 @@ public class EntitySectionMixin<T extends EntityAccess> {
     private ClassInstanceMultiMap<T> storage;
 
     @Shadow
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Mutable
     #endif
     private Visibility chunkStatus;
 
-    #if MC_VER_1_21_11
+    #if MC_VER_1_21_11 || MC_VER_1_21_10
     @Unique
     private final AtomicReference<Visibility> async$atomicStatus = new AtomicReference<>(Visibility.HIDDEN);
 

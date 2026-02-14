@@ -1,4 +1,4 @@
-#if !MC_VER_1_21_11
+#if !MC_VER_1_21_11 && !MC_VER_1_21_10
 package com.axalotl.async.common.mixin.entity.sensor;
 
 import net.minecraft.server.level.ServerLevel;
@@ -33,6 +33,6 @@ public class PlayersSensorMixin {
 }
 #else
 package com.axalotl.async.common.mixin.entity.sensor;
-// Stub — replaced by PlayerSensorMixin in 1.21.11
+// Stub -- replaced by PlayerSensorMixin in 1.21.10+
 public class PlayersSensorMixin {}
 #endif

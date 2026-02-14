@@ -2,25 +2,29 @@ package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
-import net.minecraft.server.level.ServerLevel;
-#endif
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 #if MC_VER_1_21_11
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.*;
+import org.jspecify.annotations.Nullable;
+#elif MC_VER_1_21_10
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.*;
+import org.jetbrains.annotations.Nullable;
+#elif MC_VER_1_21_1
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
 #else
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 #endif
-import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.item.ItemStack;
-#if MC_VER_1_21_11
-import org.jspecify.annotations.Nullable;
-#endif
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Mob.class)
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 public abstract class MobMixin {
 #else
 public class MobMixin {
@@ -36,7 +40,7 @@ public class MobMixin {
             return original.call(stack);
         }
     }
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     private ItemStack tryEquip(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {
         synchronized (async$lock) {
             return original.call(level, stack);
@@ -51,7 +55,7 @@ public class MobMixin {
             original.call(itemEntity);
         }
     }
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
         synchronized (async$lock) {
             original.call(level, entity);
@@ -76,7 +80,7 @@ public class MobMixin {
     }
 
     @WrapMethod(method = "setBodyArmorItem")
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     private void setBodyArmor(ItemStack stack, Operation<Void> original) {
 #else
     private void equipLootStack(ItemStack stack, Operation<Void> original) {
@@ -86,7 +90,7 @@ public class MobMixin {
         }
     }
 
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
     @WrapMethod(method = "convertTo(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/entity/ConversionParams;Lnet/minecraft/world/entity/EntitySpawnReason;Lnet/minecraft/world/entity/ConversionParams$AfterConversion;)Lnet/minecraft/world/entity/Mob;")
     private <T extends Mob> @Nullable T convertTo(
             EntityType<T> entityType,

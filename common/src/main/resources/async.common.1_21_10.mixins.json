@@ -1,0 +1,8 @@
+{
+  "add": [
+    "entity.CopperGolemAiMixin",
+    "entity.CopperGolemMixin",
+    "entity.TransportItemsBetweenContainersMixin"
+  ],
+  "remove": []
+}

@@ -18,11 +18,11 @@ public abstract class DistanceManagerMixin {
     @Shadow
     @Final
     @Mutable
-    #if MC_VER_1_21_1 || MC_VER_1_21_4
+#if MC_VER_1_21_1 || MC_VER_1_21_4
     Set<ChunkHolder> chunksToUpdateFutures = ConcurrentCollections.newHashSet();
-    #else
+#else
     protected Set<ChunkHolder> chunksToUpdateFutures = ConcurrentCollections.newHashSet();
-    #endif
+#endif
 
     @Shadow
     @Final

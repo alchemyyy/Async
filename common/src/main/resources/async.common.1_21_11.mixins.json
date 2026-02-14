@@ -1,9 +1,6 @@
 {
   "add": [
-    "entity.CopperGolemAiMixin",
-    "entity.CopperGolemMixin",
     "entity.InteractWithDoorMixin",
-    "entity.TransportItemsBetweenContainersMixin",
     "entity.movement.AsyncPathNavigationMixin",
     "entity.sensor.PlayerSensorMixin",
     "entity.spawn.NaturalSpawnerMixin",

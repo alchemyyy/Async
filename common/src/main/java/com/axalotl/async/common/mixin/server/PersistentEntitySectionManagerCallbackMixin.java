@@ -3,26 +3,20 @@ package com.axalotl.async.common.mixin.server;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.entity.PersistentEntitySectionManager;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 #if MC_VER_1_21_11
 import net.minecraft.world.level.entity.EntitySection;
-#endif
-import net.minecraft.world.level.entity.PersistentEntitySectionManager;
-#if !MC_VER_1_21_11
-import org.slf4j.Logger;
-#endif
-import org.spongepowered.asm.mixin.Mixin;
-#if MC_VER_1_21_11
 import org.spongepowered.asm.mixin.Shadow;
-#endif
-import org.spongepowered.asm.mixin.Unique;
-#if !MC_VER_1_21_11
+import java.util.concurrent.locks.ReentrantLock;
+#else
+import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 #endif
 
 #if MC_VER_1_21_11
-import java.util.concurrent.locks.ReentrantLock;
-
 @Mixin(PersistentEntitySectionManager.Callback.class)
 public abstract class PersistentEntitySectionManagerCallbackMixin {
 

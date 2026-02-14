@@ -52,7 +52,8 @@ int minor = (parts.length >= 3) ? (parts[2] as int) : 11
 String versionGroup
 if (minor <= 1) versionGroup = 'v1_21_1'
 else if (minor <= 5) versionGroup = 'v1_21_4_5'
-else if (minor <= 10) versionGroup = 'v1_21_8_10'
+else if (minor <= 8) versionGroup = 'v1_21_8'
+else if (minor <= 10) versionGroup = 'v1_21_10'
 else versionGroup = 'v1_21_11'
 
 // Load group properties: gradle.1_21_X.properties
@@ -61,7 +62,7 @@ if (groupPropsFile.exists()) {
     def versionProps = new Properties()
     groupPropsFile.withInputStream { versionProps.load(it) }
 
-    // Exact-version override (e.g. gradle.1_21_10.properties within v1_21_8_10)
+    // Exact-version override (e.g. gradle.1_21_5.properties within v1_21_4_5)
     def exactFile = file("gradle.1_21_${minor}.properties")
     if (exactFile.exists() && exactFile.canonicalPath != groupPropsFile.canonicalPath) {
         exactFile.withInputStream { versionProps.load(it) }

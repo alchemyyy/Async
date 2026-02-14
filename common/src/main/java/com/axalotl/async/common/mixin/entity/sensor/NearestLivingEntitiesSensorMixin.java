@@ -1,32 +1,26 @@
 package com.axalotl.async.common.mixin.entity.sensor;
 
-#if MC_VER_1_21_11
-import com.axalotl.async.common.config.AsyncConfig;
-#endif
 import net.minecraft.server.level.ServerLevel;
-#if !MC_VER_1_21_11
-import net.minecraft.world.entity.Entity;
-#endif
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.sensing.NearestLivingEntitySensor;
-#if !MC_VER_1_21_11
-import net.minecraft.world.phys.Vec3;
-#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import java.util.Comparator;
-#if !MC_VER_1_21_11
-import java.util.HashMap;
-#else
-import java.util.IdentityHashMap;
-#endif
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
+#if MC_VER_1_21_11 || MC_VER_1_21_10
+import com.axalotl.async.common.config.AsyncConfig;
+import java.util.IdentityHashMap;
+#else
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import java.util.HashMap;
+#endif
 
 @Mixin(value = NearestLivingEntitySensor.class, priority = 1500)
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 public class NearestLivingEntitiesSensorMixin<T extends LivingEntity> {
 
     @Redirect(method = "doTick(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;)V",

@@ -1,4 +1,4 @@
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 package com.axalotl.async.common.mixin.entity.movement;
 
 import com.axalotl.async.common.parallelised.utils.AsyncSafeNavigation;
@@ -116,6 +116,6 @@ public abstract class AsyncPathNavigationMixin implements AsyncSafeNavigation {
 }
 #else
 package com.axalotl.async.common.mixin.entity.movement;
-// Stub — only exists in 1.21.11+
+// Stub -- only exists in 1.21.10+
 public class AsyncPathNavigationMixin {}
 #endif

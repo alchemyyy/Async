@@ -1,7 +1,7 @@
 package com.axalotl.async.common.mixin.entity;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if !MC_VER_1_21_1
 import net.minecraft.server.level.ServerLevel;
 #endif
 import net.minecraft.world.entity.LivingEntity;
@@ -31,7 +31,7 @@ public class NearestVisibleLivingEntitiesMixin {
     private void init(LivingEntity owner, List<LivingEntity> entities, CallbackInfo ci) {
         Object2BooleanOpenHashMap<LivingEntity> object2BooleanOpenHashMap = new Object2BooleanOpenHashMap<>(entities.size());
         Predicate<LivingEntity> predicate = target -> Sensor.isEntityTargetable(owner, target);
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     @Inject(method = "<init>(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/LivingEntity;Ljava/util/List;)V", at = @At("RETURN"))
     private void init(ServerLevel level, LivingEntity owner, List<LivingEntity> nearbyEntities, CallbackInfo ci) {
         Object2BooleanOpenHashMap<LivingEntity> object2BooleanOpenHashMap = new Object2BooleanOpenHashMap<>(nearbyEntities.size());

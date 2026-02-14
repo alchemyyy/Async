@@ -1,29 +1,31 @@
 package com.axalotl.async.common.mixin.entity;
 
 import com.axalotl.async.common.parallelised.ConcurrentCollections;
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+#endif
+#if MC_VER_1_21_11
 import net.minecraft.resources.Identifier;
 #else
 import net.minecraft.resources.ResourceLocation;
 #endif
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mutable;
 #endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 #endif
 
 import java.util.Map;
-#if MC_VER_1_21_11
+#if MC_VER_1_21_11 || MC_VER_1_21_10
 import java.util.concurrent.ConcurrentHashMap;
 #endif
 
@@ -52,6 +54,30 @@ public class AttributeInstanceMixin {
 
     @WrapMethod(method = "getModifiers(Lnet/minecraft/world/entity/ai/attributes/AttributeModifier$Operation;)Ljava/util/Map;")
     private Map<Identifier, AttributeModifier> getModifiersConcurrent(AttributeModifier.Operation operation, Operation<Map<Identifier, AttributeModifier>> original) {
+        return modifiersByOperation.computeIfAbsent(operation, op -> ConcurrentCollections.newHashMap());
+    }
+#elif MC_VER_1_21_10
+    @Shadow
+    @Final
+    @Mutable
+    private Map<ResourceLocation, AttributeModifier> modifierById;
+
+    @Shadow
+    @Final
+    @Mutable
+    private Map<ResourceLocation, AttributeModifier> permanentModifiers;
+
+    @Shadow
+    private final Map<AttributeModifier.Operation, Map<ResourceLocation, AttributeModifier>> modifiersByOperation = ConcurrentCollections.newHashMap();
+
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void makeThreadSafe(CallbackInfo ci) {
+        modifierById = new ConcurrentHashMap<>(modifierById);
+        permanentModifiers = new ConcurrentHashMap<>(permanentModifiers);
+    }
+
+    @WrapMethod(method = "getModifiers(Lnet/minecraft/world/entity/ai/attributes/AttributeModifier$Operation;)Ljava/util/Map;")
+    private Map<ResourceLocation, AttributeModifier> getModifiersConcurrent(AttributeModifier.Operation operation, Operation<Map<ResourceLocation, AttributeModifier>> original) {
         return modifiersByOperation.computeIfAbsent(operation, op -> ConcurrentCollections.newHashMap());
     }
 #else

@@ -5,14 +5,14 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 #if MC_VER_1_21_1
 import net.minecraft.world.entity.animal.WaterAnimal;
 import net.minecraft.world.entity.animal.Dolphin;
-#elif MC_VER_1_21_4 || MC_VER_1_21_8
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.animal.AgeableWaterCreature;
-import net.minecraft.world.entity.animal.Dolphin;
 #elif MC_VER_1_21_11
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.animal.AgeableWaterCreature;
 import net.minecraft.world.entity.animal.dolphin.Dolphin;
+#else
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.animal.AgeableWaterCreature;
+import net.minecraft.world.entity.animal.Dolphin;
 #endif
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;

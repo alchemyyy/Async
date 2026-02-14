@@ -20,7 +20,8 @@ repositories {
 def versionSymbol = [
     'v1_21_1'   : 'MC_VER_1_21_1',
     'v1_21_4_5' : 'MC_VER_1_21_4',
-    'v1_21_8_10': 'MC_VER_1_21_8',
+    'v1_21_8'   : 'MC_VER_1_21_8',
+    'v1_21_10'  : 'MC_VER_1_21_10',
     'v1_21_11'  : 'MC_VER_1_21_11',
 ][versionGroup]
 

@@ -1,11 +1,11 @@
 package com.axalotl.async.common.mixin.server;
 
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+#if !MC_VER_1_21_11
 import com.axalotl.async.common.AsyncCommon;
 #endif
 import com.axalotl.async.common.ParallelProcessor;
 import net.minecraft.server.level.*;
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if !MC_VER_1_21_1
 import net.minecraft.world.entity.MobCategory;
 #endif
 import net.minecraft.world.level.ChunkPos;
@@ -18,22 +18,17 @@ import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-#if MC_VER_1_21_11
-import org.spongepowered.asm.mixin.Mutable;
-#endif
 import org.spongepowered.asm.mixin.Shadow;
-#if MC_VER_1_21_11
-import org.spongepowered.asm.mixin.Unique;
-#endif
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 #if MC_VER_1_21_11
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 #endif
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#if !MC_VER_1_21_1
 import java.util.List;
 #endif
 #if MC_VER_1_21_11
@@ -47,7 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Mixin(value = ServerChunkCache.class, priority = 1500)
 public abstract class ServerChunkCacheMixin extends ChunkSource {
 
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+#if !MC_VER_1_21_11
     @Shadow
     @Final
     public ChunkMap chunkMap;
@@ -169,25 +164,7 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
 
     @Inject(method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
             at = @At("HEAD"), cancellable = true)
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-    private void shortcutGetChunk(int x, int z, ChunkStatus leastStatus, boolean create, CallbackInfoReturnable<ChunkAccess> cir) {
-        if (AsyncCommon.LITHIUM) return;
-        if (Thread.currentThread() != this.mainThread) {
-            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(x, z));
-            if (holder != null) {
-                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(leastStatus, this.chunkMap);
-                if (future.isDone()) {
-                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
-                    if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
-                    if (chunk != null) {
-                        cir.setReturnValue(chunk);
-                        return;
-                    }
-                }
-            }
-        }
-    }
-#elif MC_VER_1_21_11
+#if MC_VER_1_21_11
     private void async$getChunk(int x, int z, ChunkStatus leastStatus, boolean create,
                                 CallbackInfoReturnable<ChunkAccess> cir) {
         if (Thread.currentThread() == this.mainThread) return;
@@ -223,24 +200,28 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
         }
         cir.setReturnValue(chunk);
     }
-#endif
-
-    @Inject(method = "getChunkNow", at = @At("HEAD"), cancellable = true)
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-    private void shortcutGetChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
+#else
+    private void shortcutGetChunk(int x, int z, ChunkStatus leastStatus, boolean create, CallbackInfoReturnable<ChunkAccess> cir) {
+        if (AsyncCommon.LITHIUM) return;
         if (Thread.currentThread() != this.mainThread) {
-            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(chunkX, chunkZ));
+            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(x, z));
             if (holder != null) {
-                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
-                ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
-                if (chunk instanceof LevelChunk worldChunk) {
-                    cir.setReturnValue(worldChunk);
-                    return;
+                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(leastStatus, this.chunkMap);
+                if (future.isDone()) {
+                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                    if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
+                    if (chunk != null) {
+                        cir.setReturnValue(chunk);
+                        return;
+                    }
                 }
             }
         }
     }
-#elif MC_VER_1_21_11
+#endif
+
+    @Inject(method = "getChunkNow", at = @At("HEAD"), cancellable = true)
+#if MC_VER_1_21_11
     private void async$getChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
         if (Thread.currentThread() == this.mainThread) return;
 
@@ -278,6 +259,20 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
 
         cir.setReturnValue(null);
     }
+#else
+    private void shortcutGetChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
+        if (Thread.currentThread() != this.mainThread) {
+            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(chunkX, chunkZ));
+            if (holder != null) {
+                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
+                ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                if (chunk instanceof LevelChunk worldChunk) {
+                    cir.setReturnValue(worldChunk);
+                    return;
+                }
+            }
+        }
+    }
 #endif
 
 #if MC_VER_1_21_1
@@ -290,7 +285,7 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
     private void tickSpawningChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
         ParallelProcessor.asyncSpawnForChunk(level, chunk, spawnState, categories);
     }
-#elif MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     @Redirect(method = "tickSpawningChunk(Lnet/minecraft/world/level/chunk/LevelChunk;JLjava/util/List;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/NaturalSpawner;spawnForChunk(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;Ljava/util/List;)V"))
     private void tickSpawningChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {

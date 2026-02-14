@@ -4,13 +4,13 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 #if MC_VER_1_21_11
 import net.minecraft.world.entity.npc.villager.Villager;
 #else
 import net.minecraft.world.entity.npc.Villager;
 #endif
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Villager.class)
 public class VillagerMixin {
@@ -27,7 +27,7 @@ public class VillagerMixin {
             }
         }
     }
-#elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+#else
     private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
         synchronized (async$lock) {
             if (!entity.isRemoved()) {

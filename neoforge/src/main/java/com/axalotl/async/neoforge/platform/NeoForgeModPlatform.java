@@ -19,25 +19,25 @@ public class NeoForgeModPlatform implements ModPlatform {
 
     @Override
     public boolean isModLoaded(String id) {
-        #if MC_VER_1_21_1 || MC_VER_1_21_4
-        return FMLLoader.getLoadingModList().getModFileById(id) != null;
+        #if MC_VER_1_21_11 || MC_VER_1_21_10
+        return FMLLoader.getCurrent().getLoadingModList().getModFileById(id) != null;
         #elif MC_VER_1_21_8
         try {
             Object modList;
             try {
-                // 1.21.10+: FMLLoader.getCurrent().getLoadingModList()
+                // 1.21.8 may or may not have getCurrent() depending on NeoForge version
                 var current = FMLLoader.class.getMethod("getCurrent").invoke(null);
                 modList = current.getClass().getMethod("getLoadingModList").invoke(current);
             } catch (NoSuchMethodException e) {
-                // 1.21.8: FMLLoader.getLoadingModList() (static)
+                // Fallback: FMLLoader.getLoadingModList() (static)
                 modList = FMLLoader.class.getMethod("getLoadingModList").invoke(null);
             }
             return modList.getClass().getMethod("getModFileById", String.class).invoke(modList, id) != null;
         } catch (Exception e) {
             return false;
         }
-        #elif MC_VER_1_21_11
-        return FMLLoader.getCurrent().getLoadingModList().getModFileById(id) != null;
+        #else
+        return FMLLoader.getLoadingModList().getModFileById(id) != null;
         #endif
     }
 

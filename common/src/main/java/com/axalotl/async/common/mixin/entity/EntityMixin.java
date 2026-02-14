@@ -2,22 +2,17 @@ package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-#if MC_VER_1_21_11
-import net.minecraft.core.BlockPos;
-#endif
 import net.minecraft.world.entity.Entity;
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_11
-import net.minecraft.world.level.Level;
-#endif
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
-import net.minecraft.world.level.block.Blocks;
-#endif
 import net.minecraft.world.level.block.state.BlockState;
 #if MC_VER_1_21_11
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
+#else
+import net.minecraft.world.level.block.Blocks;
 #endif
 import org.spongepowered.asm.mixin.Mixin;
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_11
+#if MC_VER_1_21_11
 import org.spongepowered.asm.mixin.Shadow;
 #endif
 import org.spongepowered.asm.mixin.Unique;
@@ -25,11 +20,10 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(Entity.class)
 public abstract class EntityMixin {
 
-#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_11
+#if MC_VER_1_21_11
     @Shadow
     public abstract Level level();
-#endif
-#if MC_VER_1_21_11
+
     @Shadow private @Nullable BlockState inBlockState;
     @Shadow public abstract BlockPos blockPosition();
 #endif

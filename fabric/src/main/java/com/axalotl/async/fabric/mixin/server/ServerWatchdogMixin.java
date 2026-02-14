@@ -1,10 +1,5 @@
 package com.axalotl.async.fabric.mixin.server;
 
-#if MC_VER_1_21_1
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
-#endif
-
 import java.util.Map;
 import net.minecraft.CrashReport;
 import net.minecraft.CrashReportCategory;
@@ -14,38 +9,27 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
+#if MC_VER_1_21_1
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+#endif
 
 @Mixin(ServerWatchdog.class)
 public class ServerWatchdogMixin {
 
-    @Inject(
-        method = "run",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"
-        ),
-        locals = LocalCapture.CAPTURE_FAILSOFT
-    )
+    @Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"), locals = LocalCapture.CAPTURE_FAILSOFT)
     #if MC_VER_1_21_1
     private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, ThreadMXBean threadmxbean, ThreadInfo[] athreadinfo, StringBuilder stringbuilder, Error error, CrashReport crashreport) {
-    #elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+    #else
     private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, CrashReport crashreport) {
     #endif
-        CrashReportCategory threadDumpSection = crashreport.addCategory(
-            "Async thread dump"
-        );
+        CrashReportCategory threadDumpSection = crashreport.addCategory("Async thread dump");
         threadDumpSection.setDetail("All Threads", () -> {
             StringBuilder sb = new StringBuilder();
-            Map<Thread, StackTraceElement[]> allThreads =
-                Thread.getAllStackTraces();
-            for (Map.Entry<
-                Thread,
-                StackTraceElement[]
-            > entry : allThreads.entrySet()) {
+            Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
+            for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
                 Thread t = entry.getKey();
-                sb.append(
-                    String.format("\"%s\" [%s]%n", t.getName(), t.getState())
-                );
+                sb.append(String.format("\"%s\" [%s]%n", t.getName(), t.getState()));
                 for (StackTraceElement ste : entry.getValue()) {
                     sb.append("\tat ").append(ste).append("\n");
                 }

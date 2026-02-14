@@ -1,5 +1,6 @@
 package com.axalotl.async.neoforge.mixin.server;
 
+import java.util.Map;
 import net.minecraft.CrashReport;
 import net.minecraft.CrashReportCategory;
 import net.minecraft.server.dedicated.ServerWatchdog;
@@ -8,22 +9,19 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-
 #if MC_VER_1_21_1
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 #endif
-import java.util.Map;
 
 @Mixin(ServerWatchdog.class)
 public class ServerWatchdogMixin {
 
+    @Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"), locals = LocalCapture.CAPTURE_FAILSOFT)
     #if MC_VER_1_21_1
-    @Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"), locals = LocalCapture.CAPTURE_FAILSOFT)
     private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, ThreadMXBean threadmxbean, ThreadInfo[] athreadinfo, StringBuilder stringbuilder, Error error, CrashReport crashreport) {
-    #elif MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
-    @Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"), locals = LocalCapture.CAPTURE_FAILSOFT)
-    private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, String message, CrashReport crashreport){
+    #else
+    private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, String message, CrashReport crashreport) {
     #endif
         CrashReportCategory threadDumpSection = crashreport.addCategory("Async thread dump");
         threadDumpSection.setDetail("All Threads", () -> {
