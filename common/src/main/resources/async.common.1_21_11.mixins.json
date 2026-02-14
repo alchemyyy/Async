@@ -1,0 +1,20 @@
+{
+  "add": [
+    "entity.CopperGolemAiMixin",
+    "entity.CopperGolemMixin",
+    "entity.InteractWithDoorMixin",
+    "entity.TransportItemsBetweenContainersMixin",
+    "entity.movement.AsyncPathNavigationMixin",
+    "entity.sensor.PlayerSensorMixin",
+    "entity.spawn.NaturalSpawnerMixin",
+    "lithium.GameEventDispatcherStorageMixin",
+    "lithium.LithiumRandomTickMixin",
+    "server.ChunkHolderMixin",
+    "utils.ServerLevelAccessorMixin"
+  ],
+  "remove": [
+    "entity.sensor.PlayersSensorMixin",
+    "lithium.LithiumServerChunkCacheMixin",
+    "world.ChunkHolderMixin"
+  ]
+}

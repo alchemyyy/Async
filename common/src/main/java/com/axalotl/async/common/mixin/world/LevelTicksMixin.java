@@ -1,0 +1,131 @@
+package com.axalotl.async.common.mixin.world;
+
+#if MC_VER_1_21_11
+import com.axalotl.async.common.parallelised.fastutil.Long2LongConcurrentHashMap;
+#endif
+import com.axalotl.async.common.parallelised.fastutil.Long2ObjectConcurrentHashMap;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+#if MC_VER_1_21_11
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+#endif
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+#if MC_VER_1_21_11
+import net.minecraft.util.profiling.ProfilerFiller;
+#endif
+import net.minecraft.world.ticks.LevelChunkTicks;
+import net.minecraft.world.ticks.LevelTickAccess;
+import net.minecraft.world.ticks.LevelTicks;
+#if MC_VER_1_21_11
+import net.minecraft.world.ticks.ScheduledTick;
+import org.jetbrains.annotations.NotNull;
+#endif
+import org.spongepowered.asm.mixin.*;
+#if MC_VER_1_21_11
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+#endif
+
+@Mixin(LevelTicks.class)
+#if MC_VER_1_21_11
+public abstract class LevelTicksMixin<T> implements LevelTickAccess<@NotNull T> {
+#else
+public abstract class LevelTicksMixin<T> implements LevelTickAccess<T> {
+#endif
+
+    #if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+    @Shadow
+    private final Long2ObjectMap<LevelChunkTicks<T>> allContainers = new Long2ObjectConcurrentHashMap<>();
+    #else
+    @Shadow
+    @Final
+    @Mutable
+    private Long2ObjectMap<LevelChunkTicks<@NotNull T>> allContainers;
+
+    @Shadow
+    @Final
+    @Mutable
+    private Long2LongMap nextTickForContainer;
+
+    /**
+     * Replace non-thread-safe collections with concurrent versions at construction time.
+     */
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void replaceConcurrentCollections(java.util.function.LongPredicate p_193211_, CallbackInfo ci) {
+        this.allContainers = new Long2ObjectConcurrentHashMap<>();
+        Long2LongConcurrentHashMap newMap = new Long2LongConcurrentHashMap();
+        newMap.defaultReturnValue(Long.MAX_VALUE);
+        this.nextTickForContainer = newMap;
+    }
+    #endif
+
+    @Unique
+    private static final Object async$lock = new Object();
+
+    #if MC_VER_1_21_1 || MC_VER_1_21_4
+    @WrapMethod(method = "sortContainersToTick")
+    private void sortContainersToTick(long gameTime, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(gameTime);
+        }
+    }
+    #elif MC_VER_1_21_8
+    @WrapMethod(method = "sortContainersToTick")
+    private void updateStatus(long gameTime, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(gameTime);
+        }
+    }
+    #else
+    /**
+     * Synchronize sortContainersToTick to prevent concurrent modification during iteration.
+     */
+    @WrapMethod(method = "sortContainersToTick")
+    private void wrapSortContainersToTick(long gameTime, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(gameTime);
+        }
+    }
+
+    /**
+     * Synchronize collectTicks to prevent race conditions.
+     */
+    @WrapMethod(method = "collectTicks")
+    private void wrapCollectTicks(long p_193222_, int p_193223_, ProfilerFiller p_193224_, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(p_193222_, p_193223_, p_193224_);
+        }
+    }
+
+    /**
+     * Synchronize schedule to prevent concurrent modification.
+     */
+    @WrapMethod(method = "schedule")
+    private void wrapSchedule(ScheduledTick<@NotNull T> tick, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(tick);
+        }
+    }
+
+    /**
+     * Synchronize addContainer to prevent concurrent modification.
+     */
+    @WrapMethod(method = "addContainer")
+    private void wrapAddContainer(net.minecraft.world.level.ChunkPos pos, LevelChunkTicks<@NotNull T> ticks, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(pos, ticks);
+        }
+    }
+
+    /**
+     * Synchronize removeContainer to prevent concurrent modification.
+     */
+    @WrapMethod(method = "removeContainer")
+    private void wrapRemoveContainer(net.minecraft.world.level.ChunkPos pos, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(pos);
+        }
+    }
+    #endif
+}

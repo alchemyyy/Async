@@ -9,14 +9,23 @@ plugins {
 // Resolve version group for source set selection
 def versionGroup = gradle.ext.versionGroup
 
-// Add version-specific source directories
-sourceSets.main {
-    java.srcDirs += "src/${versionGroup}/java"
-    resources.srcDirs += "src/${versionGroup}/resources"
-}
+// AT/AW files are generated eagerly during common's configuration phase
 
 repositories {
     maven { url 'https://api.modrinth.com/maven' }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+}
+
+// Manifold preprocessor: define version symbol for conditional compilation
+def versionSymbol = [
+    'v1_21_1'   : 'MC_VER_1_21_1',
+    'v1_21_4_5' : 'MC_VER_1_21_4',
+    'v1_21_8_10': 'MC_VER_1_21_8',
+    'v1_21_11'  : 'MC_VER_1_21_11',
+][versionGroup]
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xplugin:Manifold', "-A${versionSymbol}="]
 }
 
 apply plugin: 'com.modrinth.minotaur'
@@ -62,6 +71,7 @@ dependencies {
     include group: 'com.electronwill.night-config', name: 'core', version: '3.8.1'
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
+    annotationProcessor 'systems.manifold:manifold-preprocessor:2026.1.4'
 
     implementation "maven.modrinth:lithium:${lithium_version}-neoforge"
     modImplementation(include("me.lucko:fabric-permissions-api:${project.permission_api}"))
@@ -70,12 +80,10 @@ dependencies {
 loom {
     mixin.useLegacyMixinAp = true
 
-    // Check version-specific AW first, fall back to main
-    def versionAw = project(':common').file("src/${versionGroup}/resources/async.accesswidener")
-    def mainAw = project(':common').file("src/main/resources/async.accesswidener")
-    def awFile = versionAw.exists() ? versionAw : mainAw
-    if (awFile.exists()) {
-        accessWidenerPath.set(awFile)
+    // Use the eagerly-generated AW from common's cascading overlay system
+    def generatedAw = project(':common').layout.buildDirectory.dir("generated-at-aw").get().file("async.accesswidener").asFile
+    if (generatedAw.exists()) {
+        accessWidenerPath.set(generatedAw)
     }
 
     mixin {

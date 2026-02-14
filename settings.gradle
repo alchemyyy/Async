@@ -37,7 +37,8 @@ plugins {
 // Multi-Version Resolution
 // =============================================================================
 // Resolves version group from target_minecraft_version and loads properties
-// so all build scripts can access version-specific dependency coordinates.
+// from gradle.1_21_X.properties files.
+// To build all versions at once, use buildAll.bat / buildAll.sh
 // =============================================================================
 
 def targetVersion = settings.ext.has('target_minecraft_version')
@@ -50,26 +51,23 @@ int minor = (parts.length >= 3) ? (parts[2] as int) : 11
 
 String versionGroup
 if (minor <= 1) versionGroup = 'v1_21_1'
-else if (minor <= 5) versionGroup = 'v1_21_4'
-else if (minor <= 10) versionGroup = 'v1_21_8'
+else if (minor <= 5) versionGroup = 'v1_21_4_5'
+else if (minor <= 10) versionGroup = 'v1_21_8_10'
 else versionGroup = 'v1_21_11'
 
-// Load version-specific properties
-def versionPropsFile = file("versions/${versionGroup}.properties")
-if (versionPropsFile.exists()) {
+// Load group properties: gradle.1_21_X.properties
+def groupPropsFile = file("gradle.${versionGroup.substring(1)}.properties")
+if (groupPropsFile.exists()) {
     def versionProps = new Properties()
-    versionPropsFile.withInputStream { versionProps.load(it) }
+    groupPropsFile.withInputStream { versionProps.load(it) }
 
-    // Check for exact-version override (e.g., v1_21_10.properties when group is v1_21_8)
-    def exactMinorFile = file("versions/v1_21_${minor}.properties")
-    if (exactMinorFile.exists() && exactMinorFile.canonicalPath != versionPropsFile.canonicalPath) {
-        exactMinorFile.withInputStream { versionProps.load(it) }
+    // Exact-version override (e.g. gradle.1_21_10.properties within v1_21_8_10)
+    def exactFile = file("gradle.1_21_${minor}.properties")
+    if (exactFile.exists() && exactFile.canonicalPath != groupPropsFile.canonicalPath) {
+        exactFile.withInputStream { versionProps.load(it) }
     }
 
-    // Inject version properties into gradle ext so all build scripts can access them
-    versionProps.each { k, v ->
-        gradle.ext.set(k.toString(), v.toString())
-    }
+    versionProps.each { k, v -> gradle.ext.set(k.toString(), v.toString()) }
 }
 
 gradle.ext.set('versionGroup', versionGroup)

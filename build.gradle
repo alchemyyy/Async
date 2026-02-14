@@ -8,8 +8,49 @@ plugins {
 // Make version properties available as project-level properties for all subprojects
 subprojects {
     gradle.ext.properties.each { key, value ->
-        if (!project.hasProperty(key)) {
+        if (key == 'version') {
+            project.version = value
+        } else if (!project.hasProperty(key)) {
             project.ext.set(key, value)
+        }
+    }
+}
+
+// Generate build.properties with the active Manifold preprocessor symbol
+def versionGroup = gradle.ext.versionGroup
+def versionSymbol = [
+    'v1_21_1'   : 'MC_VER_1_21_1',
+    'v1_21_4_5' : 'MC_VER_1_21_4',
+    'v1_21_8_10': 'MC_VER_1_21_8',
+    'v1_21_11'  : 'MC_VER_1_21_11',
+][versionGroup]
+
+tasks.register('generateBuildProperties') {
+    def propsFile = file('build.properties')
+    outputs.file(propsFile)
+    inputs.property('versionSymbol', versionSymbol)
+    doLast {
+        propsFile.text = "${versionSymbol}=\n"
+    }
+}
+
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        dependsOn(rootProject.tasks.named('generateBuildProperties'))
+    }
+}
+
+// Copy final jars from fabric/neoforge to root build dir
+tasks.register('copyJars', Copy) {
+    from(project(':fabric').layout.buildDirectory.dir("libs"))
+    from(project(':neoforge').layout.buildDirectory.dir("libs"))
+    into layout.buildDirectory.dir("libs")
+}
+
+subprojects {
+    plugins.withType(JavaPlugin) {
+        tasks.withType(AbstractArchiveTask).configureEach {
+            finalizedBy(rootProject.tasks.named('copyJars'))
         }
     }
 }

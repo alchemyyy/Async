@@ -21,8 +21,7 @@
   "mixins": [
     "async.common.mixins.json",
     "async.version.mixins.json",
-    "async.fabric.mixins.json",
-    "async.fabric.version.mixins.json"
+    "async.fabric.mixins.json"
   ],
   "accessWidener": "async.accesswidener",
   "depends": {

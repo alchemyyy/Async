@@ -1,0 +1,8 @@
+# accessible method net/minecraft/world/entity/animal/Turtle setHasEgg (Z)V
+# accessible class net/minecraft/world/entity/animal/Turtle$TurtleBreedGoal
+# accessible class net/minecraft/world/entity/animal/Fox$FoxBreedGoal
+accessible method net/minecraft/world/entity/animal/turtle/Turtle setHasEgg (Z)V
+accessible class net/minecraft/world/entity/animal/turtle/Turtle$TurtleBreedGoal
+accessible class net/minecraft/world/entity/animal/fox/Fox$FoxBreedGoal
+accessible field net/minecraft/world/entity/Entity boardingCooldown I
+accessible field net/minecraft/world/level/chunk/LevelChunk loaded Z

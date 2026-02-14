@@ -9,14 +9,23 @@ plugins {
 // Resolve version group for source set selection
 def versionGroup = gradle.ext.versionGroup
 
-// Add version-specific source directories
-sourceSets.main {
-    java.srcDirs += "src/${versionGroup}/java"
-    resources.srcDirs += "src/${versionGroup}/resources"
-}
+// AT/AW files are generated eagerly during common's configuration phase
 
 repositories {
     maven { url 'https://api.modrinth.com/maven' }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+}
+
+// Manifold preprocessor: define version symbol for conditional compilation
+def versionSymbol = [
+    'v1_21_1'   : 'MC_VER_1_21_1',
+    'v1_21_4_5' : 'MC_VER_1_21_4',
+    'v1_21_8_10': 'MC_VER_1_21_8',
+    'v1_21_11'  : 'MC_VER_1_21_11',
+][versionGroup]
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xplugin:Manifold', "-A${versionSymbol}="]
 }
 
 apply plugin: 'com.modrinth.minotaur'
@@ -42,12 +51,10 @@ modrinth {
 neoForge {
     version = neoforge_version
 
-    // Check version-specific AT first, fall back to common main
-    def versionAt = project(':common').file("src/${versionGroup}/resources/META-INF/accesstransformer.cfg")
-    def mainAt = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
-    def atFile = versionAt.exists() ? versionAt : mainAt
-    if (atFile.exists()) {
-        accessTransformers.from(atFile.absolutePath)
+    // Use the eagerly-generated AT from common's cascading overlay system
+    def generatedAt = project(':common').layout.buildDirectory.dir("generated-at-aw").get().file("META-INF/accesstransformer.cfg").asFile
+    if (generatedAt.exists()) {
+        accessTransformers.from(generatedAt.absolutePath)
     }
 
     runs {
@@ -88,6 +95,7 @@ dependencies {
     implementation "maven.modrinth:lithium:${lithium_version}-neoforge"
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
+    annotationProcessor 'systems.manifold:manifold-preprocessor:2026.1.4'
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }

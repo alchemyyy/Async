@@ -1,0 +1,6 @@
+{
+  "add": [
+    "entity.ProjectileEntityMixin"
+  ],
+  "remove": []
+}

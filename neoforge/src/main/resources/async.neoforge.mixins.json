@@ -3,7 +3,11 @@
   "minVersion": "0.8",
   "package": "com.axalotl.async.neoforge.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["utils.ClassInstanceMultiMapMixin"],
+  "mixins": [
+    "server.ServerWatchdogMixin",
+    "utils.ClassInstanceMultiMapMixin",
+    "utils.UtilMixin"
+  ],
   "client": [],
   "server": [],
   "injectors": {

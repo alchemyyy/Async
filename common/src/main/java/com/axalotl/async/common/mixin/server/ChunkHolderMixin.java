@@ -1,0 +1,51 @@
+package com.axalotl.async.common.mixin.server;
+
+#if MC_VER_1_21_11
+
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ChunkHolder;
+import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.chunk.LevelChunk;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
+
+@Mixin(ChunkHolder.class)
+public class ChunkHolderMixin {
+
+    @Unique
+    private final Object async$lock = new Object();
+
+    @WrapMethod(method = "broadcastChanges")
+    private void wrapBroadcastChanges(LevelChunk chunk, Operation<Void> original) {
+        synchronized (async$lock) {
+            original.call(chunk);
+        }
+    }
+
+    @WrapMethod(method = "blockChanged")
+    private boolean wrapBlockChanged(BlockPos pos, Operation<Boolean> original) {
+        synchronized (async$lock) {
+            return original.call(pos);
+        }
+    }
+
+    @WrapMethod(method = "sectionLightChanged")
+    private boolean wrapSectionLightChanged(LightLayer layer, int y, Operation<Boolean> original) {
+        synchronized (async$lock) {
+            return original.call(layer, y);
+        }
+    }
+}
+
+#else
+
+// Stub: ChunkHolderMixin for pre-1.21.11 lives in mixin.world package
+import org.spongepowered.asm.mixin.Mixin;
+
+@Mixin(net.minecraft.server.level.ChunkHolder.class)
+public class ChunkHolderMixin {
+}
+
+#endif

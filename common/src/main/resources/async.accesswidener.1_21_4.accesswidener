@@ -1,0 +1,2 @@
+# accessible class net/minecraft/server/level/ServerChunkCache$ChunkAndHolder
+accessible class net/minecraft/world/level/chunk/storage/SectionStorage$PackedChunk

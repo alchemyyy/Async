@@ -1,0 +1,300 @@
+package com.axalotl.async.common.mixin.server;
+
+#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+import com.axalotl.async.common.AsyncCommon;
+#endif
+import com.axalotl.async.common.ParallelProcessor;
+import net.minecraft.server.level.*;
+#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+import net.minecraft.world.entity.MobCategory;
+#endif
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.NaturalSpawner;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ChunkSource;
+import net.minecraft.world.level.chunk.ImposterProtoChunk;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
+import org.jetbrains.annotations.Nullable;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+#if MC_VER_1_21_11
+import org.spongepowered.asm.mixin.Mutable;
+#endif
+import org.spongepowered.asm.mixin.Shadow;
+#if MC_VER_1_21_11
+import org.spongepowered.asm.mixin.Unique;
+#endif
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
+#if MC_VER_1_21_11
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+#endif
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+#if MC_VER_1_21_4 || MC_VER_1_21_8 || MC_VER_1_21_11
+import java.util.List;
+#endif
+#if MC_VER_1_21_11
+import java.util.Set;
+#endif
+import java.util.concurrent.CompletableFuture;
+#if MC_VER_1_21_11
+import java.util.concurrent.ConcurrentHashMap;
+#endif
+
+@Mixin(value = ServerChunkCache.class, priority = 1500)
+public abstract class ServerChunkCacheMixin extends ChunkSource {
+
+#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+    @Shadow
+    @Final
+    public ChunkMap chunkMap;
+#endif
+    @Shadow
+    @Final
+    Thread mainThread;
+
+#if MC_VER_1_21_11
+    @Shadow @Final public ServerChunkCache.MainThreadExecutor mainThreadProcessor;
+#endif
+
+    @Shadow
+    public abstract @Nullable ChunkHolder getVisibleChunkIfPresent(long pos);
+
+#if MC_VER_1_21_11
+    @Shadow @Final @Mutable private Set<ChunkHolder> chunkHoldersToBroadcast;
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void async$replaceWithConcurrentSet(CallbackInfo ci) {
+        this.chunkHoldersToBroadcast = ConcurrentHashMap.newKeySet();
+    }
+
+    @Unique
+    private static final ThreadLocal<long[]> asyncMultiloader$asyncCacheKeys = ThreadLocal.withInitial(() -> {
+        long[] keys = new long[4];
+        java.util.Arrays.fill(keys, Long.MAX_VALUE);
+        return keys;
+    });
+
+    @Unique
+    private static final ThreadLocal<ChunkAccess[]> asyncMultiloader$asyncCacheChunks = ThreadLocal.withInitial(() -> new ChunkAccess[4]);
+
+    @Unique
+    private static long async$createCacheKey(int x, int z, ChunkStatus status) {
+        return ((long) x & 0xfffffffL) | (((long) z & 0xfffffffL) << 28) | ((long) status.getIndex() << 56);
+    }
+
+    @Unique
+    private static void async$addToCache(long key, @Nullable ChunkAccess chunk) {
+        long[] keys = asyncMultiloader$asyncCacheKeys.get();
+        ChunkAccess[] chunks = asyncMultiloader$asyncCacheChunks.get();
+        for (int i = 3; i > 0; --i) {
+            keys[i] = keys[i - 1];
+            chunks[i] = chunks[i - 1];
+        }
+        keys[0] = key;
+        chunks[0] = chunk;
+    }
+
+    @Unique
+    private static @Nullable ChunkAccess async$getFromCache(long key) {
+        long[] keys = asyncMultiloader$asyncCacheKeys.get();
+        ChunkAccess[] chunks = asyncMultiloader$asyncCacheChunks.get();
+        for (int i = 0; i < 4; ++i) {
+            if (keys[i] == key) {
+                return chunks[i];
+            }
+        }
+        return null;
+    }
+
+    @Unique
+    private static boolean async$isInCache(long key) {
+        long[] keys = asyncMultiloader$asyncCacheKeys.get();
+        for (int i = 0; i < 4; ++i) {
+            if (keys[i] == key) return true;
+        }
+        return false;
+    }
+
+    @Unique
+    private static @Nullable ChunkAccess async$unwrap(@Nullable ChunkAccess chunk) {
+        if (chunk instanceof ImposterProtoChunk imposter) {
+            return imposter.getWrapped();
+        }
+        return chunk;
+    }
+
+    @Unique
+    private @Nullable ChunkAccess async$tryGetChunkFast(int x, int z, ChunkStatus leastStatus) {
+        long pos = ChunkPos.asLong(x, z);
+        ChunkHolder holder = this.getVisibleChunkIfPresent(pos);
+        if (holder == null) return null;
+
+        ChunkAccess chunk = async$unwrap(holder.getChunkIfPresent(leastStatus));
+        if (chunk != null) return chunk;
+
+        if (leastStatus != ChunkStatus.FULL) {
+            chunk = async$unwrap(holder.getChunkIfPresent(ChunkStatus.FULL));
+            if (chunk != null) return chunk;
+        }
+
+        return async$tryGetFromLevelChunkFutures(holder);
+    }
+
+    @Unique
+    private @Nullable LevelChunk async$tryGetFromLevelChunkFutures(ChunkHolder holder) {
+        CompletableFuture<ChunkResult<LevelChunk>> future = holder.getFullChunkFuture();
+        if (future.isDone() && !future.isCompletedExceptionally()) {
+            LevelChunk result = future.join().orElse(null);
+            if (result != null) return result;
+        }
+
+        future = holder.getTickingChunkFuture();
+        if (future.isDone() && !future.isCompletedExceptionally()) {
+            LevelChunk result = future.join().orElse(null);
+            if (result != null) return result;
+        }
+
+        future = holder.getEntityTickingChunkFuture();
+        if (future.isDone() && !future.isCompletedExceptionally()) {
+            return future.join().orElse(null);
+        }
+
+        return null;
+    }
+#endif
+
+    @Inject(method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
+            at = @At("HEAD"), cancellable = true)
+#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+    private void shortcutGetChunk(int x, int z, ChunkStatus leastStatus, boolean create, CallbackInfoReturnable<ChunkAccess> cir) {
+        if (AsyncCommon.LITHIUM) return;
+        if (Thread.currentThread() != this.mainThread) {
+            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(x, z));
+            if (holder != null) {
+                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(leastStatus, this.chunkMap);
+                if (future.isDone()) {
+                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                    if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
+                    if (chunk != null) {
+                        cir.setReturnValue(chunk);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+#elif MC_VER_1_21_11
+    private void async$getChunk(int x, int z, ChunkStatus leastStatus, boolean create,
+                                CallbackInfoReturnable<ChunkAccess> cir) {
+        if (Thread.currentThread() == this.mainThread) return;
+
+        long cacheKey = async$createCacheKey(x, z, leastStatus);
+        if (async$isInCache(cacheKey)) {
+            ChunkAccess cached = async$getFromCache(cacheKey);
+            if (cached != null || !create) {
+                cir.setReturnValue(cached);
+                return;
+            }
+        }
+
+        ChunkAccess fast = async$tryGetChunkFast(x, z, leastStatus);
+        if (fast != null) {
+            async$addToCache(cacheKey, fast);
+            cir.setReturnValue(fast);
+            return;
+        }
+
+        if (!create) {
+            cir.setReturnValue(null);
+            return;
+        }
+
+        CompletableFuture<ChunkAccess> future = CompletableFuture.supplyAsync(
+                () -> ((ServerChunkCache) (Object) this).getChunk(x, z, leastStatus, true),
+                this.mainThreadProcessor
+        );
+        ChunkAccess chunk = future.join();
+        if (chunk != null) {
+            async$addToCache(cacheKey, chunk);
+        }
+        cir.setReturnValue(chunk);
+    }
+#endif
+
+    @Inject(method = "getChunkNow", at = @At("HEAD"), cancellable = true)
+#if MC_VER_1_21_1 || MC_VER_1_21_4 || MC_VER_1_21_8
+    private void shortcutGetChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
+        if (Thread.currentThread() != this.mainThread) {
+            final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(chunkX, chunkZ));
+            if (holder != null) {
+                final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
+                ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                if (chunk instanceof LevelChunk worldChunk) {
+                    cir.setReturnValue(worldChunk);
+                    return;
+                }
+            }
+        }
+    }
+#elif MC_VER_1_21_11
+    private void async$getChunkNow(int chunkX, int chunkZ, CallbackInfoReturnable<LevelChunk> cir) {
+        if (Thread.currentThread() == this.mainThread) return;
+
+        long cacheKey = async$createCacheKey(chunkX, chunkZ, ChunkStatus.FULL);
+
+        if (async$isInCache(cacheKey)) {
+            ChunkAccess cached = async$getFromCache(cacheKey);
+            if (cached instanceof LevelChunk levelChunk) {
+                cir.setReturnValue(levelChunk);
+                return;
+            }
+        }
+
+        long pos = ChunkPos.asLong(chunkX, chunkZ);
+        ChunkHolder holder = this.getVisibleChunkIfPresent(pos);
+
+        if (holder == null) {
+            cir.setReturnValue(null);
+            return;
+        }
+
+        ChunkAccess chunk = async$unwrap(holder.getChunkIfPresent(ChunkStatus.FULL));
+        if (chunk instanceof LevelChunk levelChunk) {
+            async$addToCache(cacheKey, levelChunk);
+            cir.setReturnValue(levelChunk);
+            return;
+        }
+
+        LevelChunk levelChunk = async$tryGetFromLevelChunkFutures(holder);
+        if (levelChunk != null) {
+            async$addToCache(cacheKey, levelChunk);
+            cir.setReturnValue(levelChunk);
+            return;
+        }
+
+        cir.setReturnValue(null);
+    }
+#endif
+
+#if MC_VER_1_21_1
+    @Redirect(method = "tickChunks", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/NaturalSpawner;spawnForChunk(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;ZZZ)V"))
+    private void spawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, boolean spawnFriendlies, boolean spawnMonsters, boolean forcedDespawn) {
+        ParallelProcessor.asyncSpawnForChunk(level, chunk, spawnState, spawnFriendlies, spawnMonsters, forcedDespawn);
+    }
+#elif MC_VER_1_21_4
+    @Redirect(method = "tickChunks(Lnet/minecraft/util/profiling/ProfilerFiller;JLjava/util/List;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/NaturalSpawner;spawnForChunk(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;Ljava/util/List;)V"))
+    private void tickSpawningChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
+        ParallelProcessor.asyncSpawnForChunk(level, chunk, spawnState, categories);
+    }
+#elif MC_VER_1_21_8 || MC_VER_1_21_11
+    @Redirect(method = "tickSpawningChunk(Lnet/minecraft/world/level/chunk/LevelChunk;JLjava/util/List;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/NaturalSpawner;spawnForChunk(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/chunk/LevelChunk;Lnet/minecraft/world/level/NaturalSpawner$SpawnState;Ljava/util/List;)V"))
+    private void tickSpawningChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
+        ParallelProcessor.asyncSpawnForChunk(level, chunk, spawnState, categories);
+    }
+#endif
+}
