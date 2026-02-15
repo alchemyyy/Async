@@ -2,6 +2,10 @@ package com.axalotl.async.common.mixin.entity;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
@@ -22,88 +26,127 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 @Mixin(value = LivingEntity.class, priority = 1001)
 public abstract class LivingEntityMixin extends Entity {
 
     @Shadow
-    final private Map<Holder<MobEffect>, MobEffectInstance> activeEffects = new ConcurrentHashMap<>();
+    private final Map<Holder<MobEffect>, MobEffectInstance> activeEffects =
+        new ConcurrentHashMap<>();
 
     @Shadow
-    protected abstract void onEffectUpdated(MobEffectInstance effect, boolean reapply, Entity source);
+    protected abstract void onEffectUpdated(
+        MobEffectInstance effect,
+        boolean reapply,
+        Entity source
+    );
 
     @Shadow
-    protected abstract void onEffectsRemoved(java.util.Collection<MobEffectInstance> effects);
+    protected abstract void onEffectsRemoved(
+        java.util.Collection<MobEffectInstance> effects
+    );
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     public LivingEntityMixin(EntityType<?> type, Level world) {
         super(type, world);
     }
 
     @WrapMethod(method = "die")
-    private synchronized void die(DamageSource damageSource, Operation<Void> original) {
+    private synchronized void die(
+        DamageSource damageSource,
+        Operation<Void> original
+    ) {
         original.call(damageSource);
     }
 
-    @WrapMethod(method = "dropFromLootTable(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;Z)V")
-    private synchronized void dropFromLootTable(ServerLevel level, DamageSource damageSource, boolean playerKill, Operation<Void> original) {
+    @WrapMethod(
+        method = "dropFromLootTable(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/damagesource/DamageSource;Z)V"
+    )
+    private synchronized void dropFromLootTable(
+        ServerLevel level,
+        DamageSource damageSource,
+        boolean playerKill,
+        Operation<Void> original
+    ) {
         original.call(level, damageSource, playerKill);
     }
 
     @WrapMethod(method = "knockback")
-    private void knockback(double strength, double x, double z, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(strength, x, z);
-        }
+    private void knockback(
+        double strength,
+        double x,
+        double z,
+        Operation<Void> original
+    ) {
+        original.call(strength, x, z);
     }
 
     @WrapMethod(method = "tickEffects")
     private void tickStatusEffects(Operation<Void> original) {
-        synchronized (async$lock) {
-            if (this.level() instanceof ServerLevel serverlevel) {
-                List<Holder<MobEffect>> effectsToTick = new ArrayList<>(this.activeEffects.keySet());
+        if (this.level() instanceof ServerLevel serverlevel) {
+            List<Holder<MobEffect>> effectsToTick = new ArrayList<>(
+                this.activeEffects.keySet()
+            );
 
-                for (Holder<MobEffect> holder : effectsToTick) {
-                    MobEffectInstance mobeffectinstance = this.activeEffects.get(holder);
+            for (Holder<MobEffect> holder : effectsToTick) {
+                MobEffectInstance mobeffectinstance = this.activeEffects.get(
+                    holder
+                );
 
-                    if (mobeffectinstance != null) {
-                        if (!mobeffectinstance.tickServer(serverlevel, (LivingEntity)(Object)this,
-                                () -> this.onEffectUpdated(mobeffectinstance, true, null))) {
-                            this.activeEffects.remove(holder);
-                            this.onEffectsRemoved(List.of(mobeffectinstance));
-                        } else if (mobeffectinstance.getDuration() % 600 == 0) {
-                            this.onEffectUpdated(mobeffectinstance, false, null);
-                        }
+                if (mobeffectinstance != null) {
+                    if (
+                        !mobeffectinstance.tickServer(
+                            serverlevel,
+                            (LivingEntity) (Object) this,
+                            () ->
+                                this.onEffectUpdated(
+                                    mobeffectinstance,
+                                    true,
+                                    null
+                                )
+                        )
+                    ) {
+                        this.activeEffects.remove(holder);
+                        this.onEffectsRemoved(List.of(mobeffectinstance));
+                    } else if (mobeffectinstance.getDuration() % 600 == 0) {
+                        this.onEffectUpdated(mobeffectinstance, false, null);
                     }
                 }
-            } else {
-                original.call();
             }
+        } else {
+            original.call();
         }
     }
 
-    @WrapMethod(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z")
-    private boolean addEffect(MobEffectInstance effect, Entity source, Operation<Boolean> original) {
+    @WrapMethod(
+        method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z"
+    )
+    private boolean addEffect(
+        MobEffectInstance effect,
+        Entity source,
+        Operation<Boolean> original
+    ) {
         synchronized (async$lock) {
             return effect != null ? original.call(effect, source) : false;
         }
     }
 
     @WrapMethod(method = "removeEffect")
-    private boolean removeEffect(Holder<MobEffect> effect, Operation<Boolean> original) {
+    private boolean removeEffect(
+        Holder<MobEffect> effect,
+        Operation<Boolean> original
+    ) {
         synchronized (async$lock) {
             return effect != null ? original.call(effect) : false;
         }
     }
 
     @WrapMethod(method = "hasEffect")
-    public boolean hasEffect(Holder<MobEffect> effect, Operation<Boolean> original) {
+    public boolean hasEffect(
+        Holder<MobEffect> effect,
+        Operation<Boolean> original
+    ) {
         return effect != null ? original.call(effect) : false;
     }
 
@@ -115,8 +158,17 @@ public abstract class LivingEntityMixin extends Entity {
     }
 
     @Inject(method = "causeFallDamage", at = @At("HEAD"), cancellable = true)
-    private void causeFallDamage(double fallDistance, float multiplier, DamageSource source, CallbackInfoReturnable<Boolean> cir) {
-        BlockPos pos = new BlockPos(Mth.floor(this.getX()), Mth.floor(this.getY()), Mth.floor(this.getZ()));
+    private void causeFallDamage(
+        double fallDistance,
+        float multiplier,
+        DamageSource source,
+        CallbackInfoReturnable<Boolean> cir
+    ) {
+        BlockPos pos = new BlockPos(
+            Mth.floor(this.getX()),
+            Mth.floor(this.getY()),
+            Mth.floor(this.getZ())
+        );
         BlockState currentBlock = this.level().getBlockState(pos);
 
         if (currentBlock.is(BlockTags.CLIMBABLE)) {

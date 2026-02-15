@@ -6,6 +6,13 @@ import com.axalotl.async.common.parallelised.ConcurrentCollections;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.particles.ExplosionParticleInfo;
@@ -41,14 +48,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-
 @SuppressWarnings("all")
 @Mixin(value = ServerLevel.class, priority = 1500)
 public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
@@ -69,8 +68,26 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     @Final
     private ServerChunkCache chunkSource;
 
-    protected ServerLevelMixin(WritableLevelData levelData, ResourceKey<Level> dimension, RegistryAccess registryAccess, Holder<DimensionType> dimensionTypeRegistration, boolean isClientSide, boolean isDebug, long biomeZoomSeed, int maxChainedNeighborUpdates) {
-        super(levelData, dimension, registryAccess, dimensionTypeRegistration, isClientSide, isDebug, biomeZoomSeed, maxChainedNeighborUpdates);
+    protected ServerLevelMixin(
+        WritableLevelData levelData,
+        ResourceKey<Level> dimension,
+        RegistryAccess registryAccess,
+        Holder<DimensionType> dimensionTypeRegistration,
+        boolean isClientSide,
+        boolean isDebug,
+        long biomeZoomSeed,
+        int maxChainedNeighborUpdates
+    ) {
+        super(
+            levelData,
+            dimension,
+            registryAccess,
+            dimensionTypeRegistration,
+            isClientSide,
+            isDebug,
+            biomeZoomSeed,
+            maxChainedNeighborUpdates
+        );
     }
 
     @Shadow
@@ -82,7 +99,7 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
     private List<ServerPlayer> players;
 
     @Unique
-    private static final Object lock = new Object();
+    private final Object lock = new Object();
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void init(CallbackInfo ci) {
@@ -91,8 +108,17 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
         players = new CopyOnWriteArrayList<>();
     }
 
-    @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"))
-    private void overwriteEntityTicking(EntityTickList entityTickList, Consumer<Entity> consumer) {
+    @Redirect(
+        method = "tick",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/level/entity/EntityTickList;forEach(Ljava/util/function/Consumer;)V"
+        )
+    )
+    private void overwriteEntityTicking(
+        EntityTickList entityTickList,
+        Consumer<Entity> consumer
+    ) {
         ProfilerFiller profilerfiller = Profiler.get();
         this.entityTickList.forEach(entity -> {
             if (entity != null && !entity.isRemoved()) {
@@ -100,16 +126,26 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
                     profilerfiller.push("checkDespawn");
                     ParallelProcessor.asyncDespawn(entity);
                     profilerfiller.pop();
-                    if (this.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(entity.chunkPosition().toLong())) {
+                    if (
+                        this.chunkSource.chunkMap.getDistanceManager().inEntityTickingRange(
+                            entity.chunkPosition().toLong()
+                        )
+                    ) {
                         Entity entity2 = entity.getVehicle();
                         if (entity2 != null) {
-                            if (!entity2.isRemoved() && entity2.hasPassenger(entity)) {
+                            if (
+                                !entity2.isRemoved() &&
+                                entity2.hasPassenger(entity)
+                            ) {
                                 return;
                             }
                             entity.stopRiding();
                         }
                         profilerfiller.push("tick");
-                        ParallelProcessor.callEntityTick(this.getLevel(), entity);
+                        ParallelProcessor.callEntityTick(
+                            this.getLevel(),
+                            entity
+                        );
                         profilerfiller.pop();
                     }
                 }
@@ -120,37 +156,97 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
         profilerfiller.pop();
     }
 
-    @Redirect(method = "blockEvent", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;add(Ljava/lang/Object;)Z", remap = false))
-    private boolean overwriteQueueAdd(ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet, Object object) {
+    @Redirect(
+        method = "blockEvent",
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;add(Ljava/lang/Object;)Z",
+            remap = false
+        )
+    )
+    private boolean overwriteQueueAdd(
+        ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet,
+        Object object
+    ) {
         return async$syncedBlockEventQueue.add((BlockEventData) object);
     }
 
-    @Redirect(method = "clearBlockEvents", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;removeIf(Ljava/util/function/Predicate;)Z", remap = false))
-    private boolean overwriteQueueRemoveIf(ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet, Predicate<BlockEventData> filter) {
+    @Redirect(
+        method = "clearBlockEvents",
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;removeIf(Ljava/util/function/Predicate;)Z",
+            remap = false
+        )
+    )
+    private boolean overwriteQueueRemoveIf(
+        ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet,
+        Predicate<BlockEventData> filter
+    ) {
         return async$syncedBlockEventQueue.removeIf(filter);
     }
 
-    @Redirect(method = "runBlockEvents", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;isEmpty()Z", remap = false))
-    private boolean overwriteEmptyCheck(ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet) {
+    @Redirect(
+        method = "runBlockEvents",
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;isEmpty()Z",
+            remap = false
+        )
+    )
+    private boolean overwriteEmptyCheck(
+        ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet
+    ) {
         return async$syncedBlockEventQueue.isEmpty();
     }
 
-    @Redirect(method = "runBlockEvents", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;removeFirst()Ljava/lang/Object;", remap = false))
-    private Object overwriteQueueRemoveFirst(ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet) {
+    @Redirect(
+        method = "runBlockEvents",
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;removeFirst()Ljava/lang/Object;",
+            remap = false
+        )
+    )
+    private Object overwriteQueueRemoveFirst(
+        ObjectLinkedOpenHashSet<BlockEventData> objectLinkedOpenHashSet
+    ) {
         return async$syncedBlockEventQueue.poll();
     }
 
-    @Redirect(method = "runBlockEvents", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;addAll(Ljava/util/Collection;)Z", remap = false))
-    private boolean overwriteQueueAddAll(ObjectLinkedOpenHashSet<BlockEventData> instance, Collection<? extends BlockEventData> c) {
+    @Redirect(
+        method = "runBlockEvents",
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/objects/ObjectLinkedOpenHashSet;addAll(Ljava/util/Collection;)Z",
+            remap = false
+        )
+    )
+    private boolean overwriteQueueAddAll(
+        ObjectLinkedOpenHashSet<BlockEventData> instance,
+        Collection<? extends BlockEventData> c
+    ) {
         return async$syncedBlockEventQueue.addAll(c);
     }
 
-    @Redirect(method = "sendBlockUpdated", at = @At(value = "FIELD", target = "Lnet/minecraft/server/level/ServerLevel;isUpdatingNavigations:Z", opcode = Opcodes.PUTFIELD))
-    private void skipSendBlockUpdatedCheck(ServerLevel instance, boolean value) {
-    }
+    @Redirect(
+        method = "sendBlockUpdated",
+        at = @At(
+            value = "FIELD",
+            target = "Lnet/minecraft/server/level/ServerLevel;isUpdatingNavigations:Z",
+            opcode = Opcodes.PUTFIELD
+        )
+    )
+    private void skipSendBlockUpdatedCheck(
+        ServerLevel instance,
+        boolean value
+    ) {}
 
     @WrapMethod(method = "addFreshEntity")
-    private boolean wrapAddFreshEntity(Entity entity, Operation<Boolean> original) {
+    private boolean wrapAddFreshEntity(
+        Entity entity,
+        Operation<Boolean> original
+    ) {
         if (AsyncConfig.disabled || !AsyncConfig.enableAsyncSpawn) {
             return original.call(entity);
         }
@@ -162,28 +258,36 @@ public abstract class ServerLevelMixin extends Level implements WorldGenLevel {
 
     @WrapMethod(method = "explode")
     private void createExplosion(
-            @Nullable Entity source,
-            @Nullable DamageSource damageSource,
-            @Nullable ExplosionDamageCalculator damageCalculator,
-            double x, double y, double z,
-            float radius,
-            boolean fire,
-            Level.ExplosionInteraction explosionInteraction,
-            ParticleOptions smallExplosionParticles,
-            ParticleOptions largeExplosionParticles,
-            WeightedList<ExplosionParticleInfo> particleInfo,
-            Holder<SoundEvent> explosionSound,
-            Operation<Void> original
+        @Nullable Entity source,
+        @Nullable DamageSource damageSource,
+        @Nullable ExplosionDamageCalculator damageCalculator,
+        double x,
+        double y,
+        double z,
+        float radius,
+        boolean fire,
+        Level.ExplosionInteraction explosionInteraction,
+        ParticleOptions smallExplosionParticles,
+        ParticleOptions largeExplosionParticles,
+        WeightedList<ExplosionParticleInfo> particleInfo,
+        Holder<SoundEvent> explosionSound,
+        Operation<Void> original
     ) {
         synchronized (lock) {
             original.call(
-                    source, damageSource, damageCalculator,
-                    x, y, z, radius, fire,
-                    explosionInteraction,
-                    smallExplosionParticles,
-                    largeExplosionParticles,
-                    particleInfo,
-                    explosionSound
+                source,
+                damageSource,
+                damageCalculator,
+                x,
+                y,
+                z,
+                radius,
+                fire,
+                explosionInteraction,
+                smallExplosionParticles,
+                largeExplosionParticles,
+                particleInfo,
+                explosionSound
             );
         }
     }

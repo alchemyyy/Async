@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.Unique;
 public abstract class DolphinMixin extends AgeableWaterCreature {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     protected DolphinMixin(EntityType<? extends AgeableWaterCreature> entityType, Level level) {
         super(entityType, level);

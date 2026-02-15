@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Unique;
 public class PandaMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "pickUpItem")
     private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {

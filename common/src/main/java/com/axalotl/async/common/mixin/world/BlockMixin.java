@@ -2,6 +2,7 @@ package com.axalotl.async.common.mixin.world;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -17,25 +18,58 @@ import org.spongepowered.asm.mixin.Unique;
 public class BlockMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private static final ConcurrentHashMap<
+        LevelAccessor,
+        Object
+    > async$levelLocks = new ConcurrentHashMap<>();
 
-    @WrapMethod(method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)V")
-    private static void dropResources(BlockState state, Level level, BlockPos pos, Operation<Void> original) {
-        synchronized (async$lock) {
+    @Unique
+    private static Object async$getLock(LevelAccessor level) {
+        return async$levelLocks.computeIfAbsent(level, k -> new Object());
+    }
+
+    @WrapMethod(
+        method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)V"
+    )
+    private static void dropResources(
+        BlockState state,
+        Level level,
+        BlockPos pos,
+        Operation<Void> original
+    ) {
+        synchronized (async$getLock(level)) {
             original.call(state, level, pos);
         }
     }
 
-    @WrapMethod(method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntity;)V")
-    private static void dropResources(BlockState state, LevelAccessor level, BlockPos pos, BlockEntity blockEntity, Operation<Void> original) {
-        synchronized (async$lock) {
+    @WrapMethod(
+        method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntity;)V"
+    )
+    private static void dropResources(
+        BlockState state,
+        LevelAccessor level,
+        BlockPos pos,
+        BlockEntity blockEntity,
+        Operation<Void> original
+    ) {
+        synchronized (async$getLock(level)) {
             original.call(state, level, pos, blockEntity);
         }
     }
 
-    @WrapMethod(method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/item/ItemStack;)V")
-    private static void dropResources(BlockState state, Level level, BlockPos pos, BlockEntity blockEntity, Entity entity, ItemStack tool, Operation<Void> original) {
-        synchronized (async$lock) {
+    @WrapMethod(
+        method = "dropResources(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/entity/BlockEntity;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/item/ItemStack;)V"
+    )
+    private static void dropResources(
+        BlockState state,
+        Level level,
+        BlockPos pos,
+        BlockEntity blockEntity,
+        Entity entity,
+        ItemStack tool,
+        Operation<Void> original
+    ) {
+        synchronized (async$getLock(level)) {
             original.call(state, level, pos, blockEntity, entity, tool);
         }
     }

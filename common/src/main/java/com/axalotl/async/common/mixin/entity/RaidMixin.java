@@ -20,7 +20,7 @@ import java.util.function.Function;
 public class RaidMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @Shadow
     private final Map<Integer, Set<Raider>> groupRaiderMap = ConcurrentCollections.newHashMap();

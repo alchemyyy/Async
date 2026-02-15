@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(Bee.class)
 public class BeeMixin {
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "wantsToEnterHive")
     private boolean loot(Operation<Boolean> original) {

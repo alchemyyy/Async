@@ -18,35 +18,85 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class LevelMixin implements LevelAccessor, AutoCloseable {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @Shadow
     @Final
     private Thread thread;
 
-    @Redirect(method = "getBlockEntity", at = @At(value = "INVOKE", target = "Ljava/lang/Thread;currentThread()Ljava/lang/Thread;"))
+    @Redirect(
+        method = "getBlockEntity",
+        at = @At(
+            value = "INVOKE",
+            target = "Ljava/lang/Thread;currentThread()Ljava/lang/Thread;"
+        )
+    )
     private Thread overwriteCurrentThread() {
         return this.thread;
     }
 
-    @WrapMethod(method = "explode(Lnet/minecraft/world/entity/Entity;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V")
-    private void explode(Entity source, double x, double y, double z, float radius, boolean fire, Level.ExplosionInteraction explosionInteraction, Operation<Void> original) {
+    @WrapMethod(
+        method = "explode(Lnet/minecraft/world/entity/Entity;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V"
+    )
+    private void explode(
+        Entity source,
+        double x,
+        double y,
+        double z,
+        float radius,
+        boolean fire,
+        Level.ExplosionInteraction explosionInteraction,
+        Operation<Void> original
+    ) {
         synchronized (async$lock) {
             original.call(source, x, y, z, radius, fire, explosionInteraction);
         }
     }
 
-    @WrapMethod(method = "explode(Lnet/minecraft/world/entity/Entity;DDDFLnet/minecraft/world/level/Level$ExplosionInteraction;)V")
-    private void explode(Entity source, double x, double y, double z, float radius, Level.ExplosionInteraction explosionInteraction, Operation<Void> original) {
+    @WrapMethod(
+        method = "explode(Lnet/minecraft/world/entity/Entity;DDDFLnet/minecraft/world/level/Level$ExplosionInteraction;)V"
+    )
+    private void explode(
+        Entity source,
+        double x,
+        double y,
+        double z,
+        float radius,
+        Level.ExplosionInteraction explosionInteraction,
+        Operation<Void> original
+    ) {
         synchronized (async$lock) {
             original.call(source, x, y, z, radius, explosionInteraction);
         }
     }
 
-    @WrapMethod(method = "explode(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;Lnet/minecraft/world/level/ExplosionDamageCalculator;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V")
-    private void explode(Entity source, DamageSource damageSource, ExplosionDamageCalculator damageCalculator, double x, double y, double z, float radius, boolean fire, Level.ExplosionInteraction explosionInteraction, Operation<Void> original) {
+    @WrapMethod(
+        method = "explode(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/damagesource/DamageSource;Lnet/minecraft/world/level/ExplosionDamageCalculator;DDDFZLnet/minecraft/world/level/Level$ExplosionInteraction;)V"
+    )
+    private void explode(
+        Entity source,
+        DamageSource damageSource,
+        ExplosionDamageCalculator damageCalculator,
+        double x,
+        double y,
+        double z,
+        float radius,
+        boolean fire,
+        Level.ExplosionInteraction explosionInteraction,
+        Operation<Void> original
+    ) {
         synchronized (async$lock) {
-            original.call(source, damageSource, damageCalculator, x, y, z, radius, fire, explosionInteraction);
+            original.call(
+                source,
+                damageSource,
+                damageCalculator,
+                x,
+                y,
+                z,
+                radius,
+                fire,
+                explosionInteraction
+            );
         }
     }
 }

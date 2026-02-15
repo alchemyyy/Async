@@ -67,6 +67,7 @@
     "utils.LockHelperMixin",
     "utils.ServerLevelAccessorMixin",
     "utils.ShufflingListMixin",
+    "utils.LegacyRandomSourceMixin",
     "utils.SyncAllMixin",
     "utils.ThreadingDetectorMixin",
     "vmp.VMPChunkMapMixin",
@@ -82,9 +83,7 @@
     "world.ServerLevelMixin"
   ],
   "client": [],
-  "server": [
-    "entity.VillagerMixin"
-  ],
+  "server": ["entity.VillagerMixin"],
   "injectors": {
     "defaultRequire": 1
   },

@@ -16,14 +16,21 @@ public abstract class EntityMixin {
 
     @Shadow
     public abstract Level level();
-    @Shadow private @Nullable BlockState inBlockState;
-    @Shadow public abstract BlockPos blockPosition();
+
+    @Shadow
+    private @Nullable BlockState inBlockState;
+
+    @Shadow
+    public abstract BlockPos blockPosition();
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "setRemoved")
-    private void setRemoved(Entity.RemovalReason reason, Operation<Void> original) {
+    private void setRemoved(
+        Entity.RemovalReason reason,
+        Operation<Void> original
+    ) {
         synchronized (async$lock) {
             original.call(reason);
         }

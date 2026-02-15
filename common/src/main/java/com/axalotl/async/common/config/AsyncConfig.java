@@ -2,41 +2,53 @@ package com.axalotl.async.common.config;
 
 import com.axalotl.async.common.parallelised.utils.ModCompatible;
 import com.axalotl.async.common.platform.PlatformUtils;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
 public class AsyncConfig {
-    public static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfig.class);
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(
+        AsyncConfig.class
+    );
 
     public static boolean disabled = false;
     public static int maxThreads = -1;
     public static boolean enableAsyncSpawn = true;
     public static boolean enableAsyncRandomTicks = false;
-    public static Set<String> synchronizedEntities = getDefaultSynchronizedEntities();
+    public static boolean skipErroringEntities = false;
+    public static Set<String> synchronizedEntities =
+        getDefaultSynchronizedEntities();
 
     // Caches
-    private static final Map<Identifier, Boolean> syncCache = new ConcurrentHashMap<>();
+    private static final Map<Identifier, Boolean> syncCache =
+        new ConcurrentHashMap<>();
     private static final Set<String> exactEntities = new HashSet<>();
     private static final Set<String> namespaceWildcards = new HashSet<>();
 
     public static Set<String> getDefaultSynchronizedEntities() {
-        final Set<String> defaultSynchronizedEntities = new HashSet<>(ModCompatible.addUnsupportedMods());
-        defaultSynchronizedEntities.addAll(Set.of(
+        final Set<String> defaultSynchronizedEntities = new HashSet<>(
+            ModCompatible.addUnsupportedMods()
+        );
+        defaultSynchronizedEntities.addAll(
+            Set.of(
                 "minecraft:tnt",
                 "minecraft:item",
                 "minecraft:experience_orb"
-        ));
+            )
+        );
         return defaultSynchronizedEntities;
     }
 
     public static int getParallelism() {
         if (maxThreads <= 0) return Runtime.getRuntime().availableProcessors();
-        return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), maxThreads));
+        return Math.max(
+            1,
+            Math.min(Runtime.getRuntime().availableProcessors(), maxThreads)
+        );
     }
 
     public static boolean isNamespaceWildcard(String input) {

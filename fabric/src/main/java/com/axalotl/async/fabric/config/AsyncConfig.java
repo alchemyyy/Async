@@ -1,34 +1,35 @@
 package com.axalotl.async.fabric.config;
 
+import static com.axalotl.async.common.config.AsyncConfig.*;
+
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import net.fabricmc.loader.api.FabricLoader;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
-
-import static com.axalotl.async.common.config.AsyncConfig.*;
+import net.fabricmc.loader.api.FabricLoader;
 
 public class AsyncConfig {
 
-    private static final Supplier<CommentedFileConfig> configSupplier =
-            () -> CommentedFileConfig.builder(
-                            FabricLoader.getInstance().getConfigDir().resolve("async.toml"))
-                    .preserveInsertionOrder()
-                    .sync()
-                    .build();
+    private static final Supplier<CommentedFileConfig> configSupplier = () ->
+        CommentedFileConfig.builder(
+            FabricLoader.getInstance().getConfigDir().resolve("async.toml")
+        )
+            .preserveInsertionOrder()
+            .sync()
+            .build();
 
     private static CommentedFileConfig CONFIG;
 
     private static final Set<String> VALID_KEYS = Set.of(
-            "disabled",
-            "maxThreads",
-            "synchronizedEntities",
-            "enableAsyncSpawn",
-            "enableAsyncRandomTicks"
+        "disabled",
+        "maxThreads",
+        "synchronizedEntities",
+        "enableAsyncSpawn",
+        "enableAsyncRandomTicks",
+        "skipErroringEntities"
     );
 
     public static void init() {
@@ -47,30 +48,59 @@ public class AsyncConfig {
                 com.axalotl.async.common.config.AsyncConfig.onConfigLoaded();
             }
         } catch (Throwable t) {
-            LOGGER.error("Error loading configuration. Resetting to defaults.", t);
+            LOGGER.error(
+                "Error loading configuration. Resetting to defaults.",
+                t
+            );
             setDefaultValues();
             saveConfig();
         }
     }
 
     public static void saveConfig() {
-        setWithComment("disabled", disabled, "Enables parallel processing of entities.");
-        setWithComment("maxThreads", maxThreads, "Maximum worker threads. -1 = auto.");
-        setWithComment("synchronizedEntities", new ArrayList<>(synchronizedEntities),
-                """
-                        List of entity IDs or namespaces (*):
-                          - 'minecraft:zombie' = specific entity
-                          - 'minecraft:*'      = all entities in namespace""");
-        setWithComment("enableAsyncSpawn", enableAsyncSpawn,
-                "Enables async entity spawning. WARNING: incompatible with Carpet's lagFreeSpawning.");
-        setWithComment("enableAsyncRandomTicks", enableAsyncRandomTicks,
-                "Experimental! Enables async random ticks.");
+        setWithComment(
+            "disabled",
+            disabled,
+            "Enables parallel processing of entities."
+        );
+        setWithComment(
+            "maxThreads",
+            maxThreads,
+            "Maximum worker threads. -1 = auto."
+        );
+        setWithComment(
+            "synchronizedEntities",
+            new ArrayList<>(synchronizedEntities),
+            """
+            List of entity IDs or namespaces (*):
+              - 'minecraft:zombie' = specific entity
+              - 'minecraft:*'      = all entities in namespace"""
+        );
+        setWithComment(
+            "enableAsyncSpawn",
+            enableAsyncSpawn,
+            "Enables async entity spawning. WARNING: incompatible with Carpet's lagFreeSpawning."
+        );
+        setWithComment(
+            "enableAsyncRandomTicks",
+            enableAsyncRandomTicks,
+            "Experimental! Enables async random ticks."
+        );
+        setWithComment(
+            "skipErroringEntities",
+            skipErroringEntities,
+            "Skip entities that error during synchronous ticking instead of crashing."
+        );
 
         CONFIG.save();
         LOGGER.info("Configuration saved.");
     }
 
-    private static void setWithComment(String key, Object value, String comment) {
+    private static void setWithComment(
+        String key,
+        Object value,
+        String comment
+    ) {
         CONFIG.set(key, value);
         CONFIG.setComment(key, comment);
     }
@@ -80,8 +110,18 @@ public class AsyncConfig {
 
         disabled = CONFIG.getOrElse("disabled", disabled);
         maxThreads = CONFIG.getOrElse("maxThreads", maxThreads);
-        enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
-        enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
+        enableAsyncSpawn = CONFIG.getOrElse(
+            "enableAsyncSpawn",
+            enableAsyncSpawn
+        );
+        enableAsyncRandomTicks = CONFIG.getOrElse(
+            "enableAsyncRandomTicks",
+            enableAsyncRandomTicks
+        );
+        skipErroringEntities = CONFIG.getOrElse(
+            "skipErroringEntities",
+            skipErroringEntities
+        );
 
         List<String> entries = CONFIG.get("synchronizedEntities");
         if (entries != null) {
@@ -93,14 +133,30 @@ public class AsyncConfig {
     }
 
     private static void restoreComments() {
-        setCommentIfExists("disabled", "Enables parallel processing of entities.");
+        setCommentIfExists(
+            "disabled",
+            "Enables parallel processing of entities."
+        );
         setCommentIfExists("maxThreads", "Maximum worker threads. -1 = auto.");
-        setCommentIfExists("synchronizedEntities", """
-                List of entity IDs or namespaces (*):
-                  - 'minecraft:zombie' = specific entity
-                  - 'minecraft:*'      = all entities in namespace""");
-        setCommentIfExists("enableAsyncSpawn", "Enables async entity spawning. WARNING: incompatible with Carpet's lagFreeSpawning.");
-        setCommentIfExists("enableAsyncRandomTicks", "Experimental! Enables async random ticks.");
+        setCommentIfExists(
+            "synchronizedEntities",
+            """
+            List of entity IDs or namespaces (*):
+              - 'minecraft:zombie' = specific entity
+              - 'minecraft:*'      = all entities in namespace"""
+        );
+        setCommentIfExists(
+            "enableAsyncSpawn",
+            "Enables async entity spawning. WARNING: incompatible with Carpet's lagFreeSpawning."
+        );
+        setCommentIfExists(
+            "enableAsyncRandomTicks",
+            "Experimental! Enables async random ticks."
+        );
+        setCommentIfExists(
+            "skipErroringEntities",
+            "Skip entities that error during synchronous ticking instead of crashing."
+        );
     }
 
     private static void setCommentIfExists(String key, String comment) {

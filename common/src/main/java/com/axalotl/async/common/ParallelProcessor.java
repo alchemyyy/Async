@@ -149,15 +149,19 @@ public class ParallelProcessor {
     }
 
     private static void safeTickSync(ServerLevel world, Entity entity) {
-        try {
+        if (AsyncConfig.skipErroringEntities) {
+            try {
+                world.tickNonPassenger(entity);
+            } catch (Throwable t) {
+                LOGGER.error(
+                    "Skipping erroring entity. Type: {}, UUID: {}",
+                    entity.getType(),
+                    entity.getUUID(),
+                    t
+                );
+            }
+        } else {
             world.tickNonPassenger(entity);
-        } catch (Throwable t) {
-            LOGGER.error(
-                "Error during synchronous entity tick. Type: {}, UUID: {}",
-                entity.getType(),
-                entity.getUUID(),
-                t
-            );
         }
     }
 
@@ -408,61 +412,87 @@ public class ParallelProcessor {
             System.nanoTime() +
             TimeUnit.SECONDS.toNanos(POST_TICK_TIMEOUT_SECS);
 
-        while (true) {
-            boolean allDone =
-                (entityTask == null || entityTask.isDone()) &&
-                (despawnTask == null || despawnTask.isDone()) &&
-                (externalFuture == null || externalFuture.isDone());
+        // Instead of busy-waiting with parkNanos, the server thread helps
+        // execute ForkJoinPool subtasks while waiting for completion.
+        // This eliminates idle time on the server thread.
+        final ForkJoinTask<?> eTask = entityTask;
+        final ForkJoinTask<?> dTask = despawnTask;
+        final CompletableFuture<Void> extFuture = externalFuture;
 
-            if (allDone) break;
-
-            if (System.nanoTime() > deadlineNanos) {
-                LOGGER.error(
-                    "postEntityTick timed out after {}s waiting for async tasks. " +
-                        "Entity done: {}, Despawn done: {}, External done: {}. " +
-                        "Falling back to synchronous processing for incomplete work.",
-                    POST_TICK_TIMEOUT_SECS,
-                    entityTask == null || entityTask.isDone(),
-                    despawnTask == null || despawnTask.isDone(),
-                    externalFuture == null || externalFuture.isDone()
-                );
-
-                if (
-                    entityTask != null && !entityTask.isDone()
-                ) entityTask.cancel(true);
-                if (
-                    despawnTask != null && !despawnTask.isDone()
-                ) despawnTask.cancel(true);
-                if (
-                    externalFuture != null && !externalFuture.isDone()
-                ) externalFuture.cancel(true);
-
-                if (entityCompleted != null) {
-                    int rescued = 0;
-                    for (int i = 0; i < entityCount; i++) {
-                        if (!entityCompleted[i]) {
-                            safeTickSync(pendingWorlds[i], pendingEntities[i]);
-                            rescued++;
+        try {
+            ForkJoinPool.managedBlock(
+                new ForkJoinPool.ManagedBlocker() {
+                    @Override
+                    public boolean block() {
+                        // Do useful work while waiting: poll chunk tasks
+                        boolean didWork = false;
+                        for (ServerLevel world : server.getAllLevels()) {
+                            didWork |= world.getChunkSource().pollTask();
                         }
+                        if (!didWork) {
+                            // Brief park only if no chunk work available and tasks aren't done
+                            LockSupport.parkNanos(10_000L);
+                        }
+                        return isReleasable();
                     }
-                    if (rescued > 0) {
-                        LOGGER.warn(
-                            "Synchronously rescued {} entities from timed-out async batch",
-                            rescued
+
+                    @Override
+                    public boolean isReleasable() {
+                        if (System.nanoTime() > deadlineNanos) return true;
+                        return (
+                            (eTask == null || eTask.isDone()) &&
+                            (dTask == null || dTask.isDone()) &&
+                            (extFuture == null || extFuture.isDone())
                         );
                     }
                 }
+            );
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
-                break;
-            }
+        // Check if we timed out
+        boolean timedOut =
+            System.nanoTime() > deadlineNanos &&
+            !((eTask == null || eTask.isDone()) &&
+                (dTask == null || dTask.isDone()) &&
+                (extFuture == null || extFuture.isDone()));
 
-            boolean didWork = false;
-            for (ServerLevel world : server.getAllLevels()) {
-                didWork |= world.getChunkSource().pollTask();
-            }
+        if (timedOut) {
+            LOGGER.error(
+                "postEntityTick timed out after {}s waiting for async tasks. " +
+                    "Entity done: {}, Despawn done: {}, External done: {}. " +
+                    "Falling back to synchronous processing for incomplete work.",
+                POST_TICK_TIMEOUT_SECS,
+                entityTask == null || entityTask.isDone(),
+                despawnTask == null || despawnTask.isDone(),
+                externalFuture == null || externalFuture.isDone()
+            );
 
-            if (!didWork) {
-                LockSupport.parkNanos(1_000L);
+            if (entityTask != null && !entityTask.isDone()) entityTask.cancel(
+                true
+            );
+            if (
+                despawnTask != null && !despawnTask.isDone()
+            ) despawnTask.cancel(true);
+            if (
+                externalFuture != null && !externalFuture.isDone()
+            ) externalFuture.cancel(true);
+
+            if (entityCompleted != null) {
+                int rescued = 0;
+                for (int i = 0; i < entityCount; i++) {
+                    if (!entityCompleted[i]) {
+                        pendingWorlds[i].tickNonPassenger(pendingEntities[i]);
+                        rescued++;
+                    }
+                }
+                if (rescued > 0) {
+                    LOGGER.warn(
+                        "Synchronously rescued {} entities from timed-out async batch",
+                        rescued
+                    );
+                }
             }
         }
 
@@ -473,6 +503,23 @@ public class ParallelProcessor {
                     "Entity tick batch error",
                     entityTask.getException()
                 );
+            }
+            // Retry failed entities synchronously — no try-catch so genuine
+            // errors crash normally, avoiding update-suppression style issues.
+            if (entityCompleted != null) {
+                int rescued = 0;
+                for (int i = 0; i < entityCount; i++) {
+                    if (!entityCompleted[i]) {
+                        pendingWorlds[i].tickNonPassenger(pendingEntities[i]);
+                        rescued++;
+                    }
+                }
+                if (rescued > 0) {
+                    LOGGER.warn(
+                        "Synchronously retried {} entities that failed async tick",
+                        rescued
+                    );
+                }
             }
             Arrays.fill(pendingWorlds, 0, entityCount, null);
             Arrays.fill(pendingEntities, 0, entityCount, null);

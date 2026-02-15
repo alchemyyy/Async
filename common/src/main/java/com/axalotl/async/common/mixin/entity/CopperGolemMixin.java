@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Unique;
 @Mixin(CopperGolem.class)
 public class CopperGolemMixin {
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "hasContainerOpen")
     private boolean hasContainerOpen(ContainerOpenersCounter counter, BlockPos pos, Operation<Boolean> original) {

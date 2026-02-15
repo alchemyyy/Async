@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.Unique;
 public abstract class MobMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "equipItemIfPossible")
     private ItemStack tryEquip(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {

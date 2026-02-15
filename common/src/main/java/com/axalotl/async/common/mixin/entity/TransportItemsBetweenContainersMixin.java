@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TransportItemsBetweenContainersMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @Unique
     private static final ConcurrentHashMap.KeySetView<BlockPos, Boolean> async$activeContainers = ConcurrentHashMap.newKeySet();

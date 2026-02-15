@@ -11,17 +11,17 @@ import org.spongepowered.asm.mixin.Unique;
 public class ServerLevelEntityCallbacksMixin {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "onTickingStart(Lnet/minecraft/world/entity/Entity;)V")
-    private synchronized void onTickingStart(Entity entity, Operation<Void> original) {
+    private void onTickingStart(Entity entity, Operation<Void> original) {
         synchronized (async$lock) {
             original.call(entity);
         }
     }
 
     @WrapMethod(method = "onTickingEnd(Lnet/minecraft/world/entity/Entity;)V")
-    private synchronized void onTickingEnd(Entity entity, Operation<Void> original) {
+    private void onTickingEnd(Entity entity, Operation<Void> original) {
         synchronized (async$lock) {
             original.call(entity);
         }
