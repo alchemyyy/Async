@@ -36,3 +36,5 @@ accessible class net/minecraft/server/level/ChunkMap$DistanceManager
 accessible method net/minecraft/server/level/DistanceManager forEachEntityTickingChunk (Lit/unimi/dsi/fastutil/longs/LongConsumer;)V
 accessible field net/minecraft/world/entity/Entity boardingCooldown I
 accessible field net/minecraft/world/level/chunk/LevelChunk loaded Z
+accessible field net/minecraft/world/level/entity/PersistentEntitySectionManager chunkVisibility Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;
+mutable field net/minecraft/world/level/entity/PersistentEntitySectionManager chunkVisibility Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;
