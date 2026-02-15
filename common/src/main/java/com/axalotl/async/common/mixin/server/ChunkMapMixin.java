@@ -189,21 +189,7 @@ public abstract class ChunkMapMixin
 
             if (!chunks.isEmpty()) {
                 LevelChunk[] arr = chunks.toArray(new LevelChunk[0]);
-                CompletableFuture<Void> future = new CompletableFuture<>();
-                ParallelProcessor.tickPool.execute(() -> {
-                    try {
-                        new RandomTickBatch(
-                            arr,
-                            0,
-                            arr.length,
-                            action
-                        ).invoke();
-                        future.complete(null);
-                    } catch (Throwable e) {
-                        future.completeExceptionally(e);
-                    }
-                });
-                ParallelProcessor.addTask(future);
+                RandomTickBatch.execute(arr, arr.length, action);
             }
         } else {
             original.call(action);

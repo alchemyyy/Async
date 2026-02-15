@@ -1,50 +1,44 @@
 package com.axalotl.async.common;
 
-import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import net.minecraft.world.level.chunk.LevelChunk;
 
-public final class RandomTickBatch extends RecursiveAction {
+public final class RandomTickBatch {
 
-    private static final int RANDOM_TICK_GRAIN = 16;
+    private RandomTickBatch() {}
 
-    private final LevelChunk[] chunks;
-    private final int from;
-    private final int to;
-    private final Consumer<LevelChunk> action;
-
-    public RandomTickBatch(
+    public static void execute(
         LevelChunk[] chunks,
-        int from,
-        int to,
+        int count,
         Consumer<LevelChunk> action
     ) {
-        this.chunks = chunks;
-        this.from = from;
-        this.to = to;
-        this.action = action;
-    }
+        int parallelism = ParallelProcessor.tickPool.getParallelism();
+        int sliceSize = (count + parallelism - 1) / parallelism;
+        int taskCount = (count + sliceSize - 1) / sliceSize;
 
-    @Override
-    protected void compute() {
-        int size = to - from;
-        if (size <= RANDOM_TICK_GRAIN) {
-            for (int i = from; i < to; i++) {
-                try {
-                    action.accept(chunks[i]);
-                } catch (Throwable e) {
-                    ParallelProcessor.LOGGER.error(
-                        "Error in async random tick",
-                        e
-                    );
-                }
-            }
-        } else {
-            int mid = (from + to) >>> 1;
-            invokeAll(
-                new RandomTickBatch(chunks, from, mid, action),
-                new RandomTickBatch(chunks, mid, to, action)
+        CompletableFuture<?>[] futures = new CompletableFuture[taskCount];
+
+        for (int t = 0; t < taskCount; t++) {
+            int from = t * sliceSize;
+            int to = Math.min(from + sliceSize, count);
+            futures[t] = CompletableFuture.runAsync(
+                () -> {
+                    for (int i = from; i < to; i++) {
+                        try {
+                            action.accept(chunks[i]);
+                        } catch (Throwable e) {
+                            ParallelProcessor.LOGGER.error(
+                                "Error in async random tick",
+                                e
+                            );
+                        }
+                    }
+                },
+                ParallelProcessor.tickPool
             );
         }
+
+        ParallelProcessor.addTask(CompletableFuture.allOf(futures));
     }
 }
