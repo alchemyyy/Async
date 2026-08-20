@@ -66,6 +66,7 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 - `/async config reload` - Reloads the configuration from disk.
 - `/async config setAsyncEntitySpawn [true|false]` - Enables or disables parallel mob spawning. Without an argument, shows the current value. **Warning: Not compatible with Carpet's lagFreeSpawning rule.**
 - `/async config setAsyncRandomTicks [true|false]` - Enables or disables experimental async random ticks. Without an argument, shows the current value.
+- `/async config setSynchronizeUnannotatedModEntities [true|false]` - Controls whether non-Minecraft entities without `@AsyncCompatible` are processed synchronously. Disabled by default.
 - `/async config synchronizedEntities` - Lists entities that are processed synchronously.
 - `/async config synchronizedEntities add <entity|namespace:*>` - Adds an entity type or namespace to synchronous processing.
 - `/async config synchronizedEntities remove <entity|namespace:*>` - Removes an entity type or namespace from synchronous processing.
@@ -84,6 +85,7 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 - `maxThreads` - Worker threads to use. Defaults to `-1` for automatic sizing.
 - `enableAsyncSpawn` - Enables parallel mob spawning.
 - `enableAsyncRandomTicks` - Enables experimental async random ticks.
+- `synchronizeUnannotatedModEntities` - Synchronizes non-Minecraft entities without `@AsyncCompatible`. Defaults to `false`.
 - `synchronizedEntities` - Entity types that must be ticked on the main thread.
 
 ## 📥 Download
