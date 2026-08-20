@@ -73,6 +73,7 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 ### Statistics commands
 
 - `/async stats` - Displays mod status, async feature states, entity count, and thread count.
+- `/async stats synced` - Records one tick, then lists synchronized entity types, instance counts, and every synchronization reason.
 - `/async stats entity` - Shows entity counts by world and how many are processed asynchronously.
 - `/async stats entity <number>` - Shows the top `<number>` entity types by count, marked as `async` or `sync`.
 - `/async stats entity <number> <ticks>` - Records for `<ticks>` ticks, then shows average tick time for the top `<number>` entity types.
