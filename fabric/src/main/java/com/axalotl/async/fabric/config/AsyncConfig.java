@@ -29,8 +29,14 @@ public class AsyncConfig {
             "synchronizedEntities",
             "enableAsyncSpawn",
             "enableAsyncRandomTicks",
-            "synchronizeUnannotatedModEntities"
+            "synchronizeUnannotatedModEntities",
+            "serverThreadMods"
     );
+
+    private static final String SERVER_THREAD_MODS_COMMENT = """
+            Mod IDs whose server-thread checks also pass on Async worker threads.
+            For mods that skip their server logic for entities ticked in parallel, such as claim protection.
+            Code from each listed mod runs on one thread at a time.""";
 
     public static void init() {
         LOGGER.info("Initializing Async Config...");
@@ -72,6 +78,7 @@ public class AsyncConfig {
                 "Experimental! Enables async random ticks.");
         setWithComment("synchronizeUnannotatedModEntities", synchronizeUnannotatedModEntities,
                 "Ticks non-Minecraft entities without @AsyncCompatible on the main thread.");
+        setWithComment("serverThreadMods", new ArrayList<>(serverThreadMods), SERVER_THREAD_MODS_COMMENT);
 
         CONFIG.save();
         LOGGER.info("Configuration saved.");
@@ -99,6 +106,11 @@ public class AsyncConfig {
             synchronizedEntities = new HashSet<>(entries);
         }
 
+        List<String> serverThreadModEntries = CONFIG.get("serverThreadMods");
+        if (serverThreadModEntries != null) {
+            serverThreadMods = new HashSet<>(serverThreadModEntries);
+        }
+
         restoreComments();
     }
 
@@ -115,6 +127,7 @@ public class AsyncConfig {
         setCommentIfExists("enableAsyncRandomTicks", "Experimental! Enables async random ticks.");
         setCommentIfExists("synchronizeUnannotatedModEntities",
                 "Ticks non-Minecraft entities without @AsyncCompatible on the main thread.");
+        setCommentIfExists("serverThreadMods", SERVER_THREAD_MODS_COMMENT);
     }
 
     private static void setCommentIfExists(String key, String comment) {
@@ -146,5 +159,6 @@ public class AsyncConfig {
         enableAsyncRandomTicks = false;
         synchronizeUnannotatedModEntities = false;
         synchronizedEntities = getDefaultSynchronizedEntities();
+        serverThreadMods = getDefaultServerThreadMods();
     }
 }

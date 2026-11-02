@@ -53,7 +53,6 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 
 ## ⚠️ Incompatible Mods
 - ❌ Moonrise - Known incompatibility
-- ❌ Open Parties and Claims - Known incompatibility
 - ⚠️ ...and there may be conflicts with other mods.
 
 *If you encounter issues with other mods, please report them on our [GitHub](https://github.com/AxalotLDev/Async/issues) or [Discord](https://discord.com/invite/scvCQ2qKS3).*
@@ -69,6 +68,9 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 - `/async config synchronizedEntities` - Lists entities that are processed synchronously.
 - `/async config synchronizedEntities add <entity|namespace:*>` - Adds an entity type or namespace to synchronous processing.
 - `/async config synchronizedEntities remove <entity|namespace:*>` - Removes an entity type or namespace from synchronous processing.
+- `/async config serverThreadMods` - Lists mods whose server-thread checks also pass on Async worker threads.
+- `/async config serverThreadMods add <modid>` - Adds an installed mod to the server-thread mods.
+- `/async config serverThreadMods remove <modid>` - Removes a mod from the server-thread mods.
 
 ### Statistics commands
 
@@ -84,6 +86,7 @@ Concurrent Chunk Management Engine, Fabric API, FerriteCore, Lithium, ScalableLu
 - `enableAsyncSpawn` - Enables parallel mob spawning.
 - `enableAsyncRandomTicks` - Enables experimental async random ticks.
 - `synchronizedEntities` - Entity types that must be ticked on the main thread.
+- `serverThreadMods` - Mod IDs whose server-thread checks (`MinecraftServer#isSameThread`) also pass on Async worker threads, for mods that otherwise skip their server logic for entities ticked in parallel, such as claim protection. Code from each listed mod runs on one thread at a time. Defaults to `["openpartiesandclaims"]`; mods that are not installed are ignored.
 
 ## 📥 Download
 The mod is available on [Modrinth](https://modrinth.com/mod/async)

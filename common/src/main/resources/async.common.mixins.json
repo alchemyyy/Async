@@ -67,6 +67,7 @@
     "server.ServerEntityMixin",
     "server.ServerLevelEntityCallbacksMixin",
     "server.ServerPlayerMixin",
+    "utils.BlockableEventLoopMixin",
     "utils.FastUtilSynchronizeMixin",
     "utils.LockHelperMixin",
     "utils.ShufflingListMixin",

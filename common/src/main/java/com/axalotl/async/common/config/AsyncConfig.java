@@ -1,6 +1,7 @@
 package com.axalotl.async.common.config;
 
 import com.axalotl.async.common.ParallelProcessor;
+import com.axalotl.async.common.ServerThreadMods;
 import com.axalotl.async.common.platform.PlatformUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -20,6 +21,7 @@ public class AsyncConfig {
     public static boolean enableAsyncRandomTicks = false;
     public static boolean synchronizeUnannotatedModEntities = false;
     public static Set<String> synchronizedEntities = getDefaultSynchronizedEntities();
+    public static Set<String> serverThreadMods = getDefaultServerThreadMods();
 
     // Caches
     private static final Map<ResourceLocation, Boolean> syncCache = new ConcurrentHashMap<>();
@@ -32,6 +34,10 @@ public class AsyncConfig {
                 "minecraft:item",
                 "minecraft:experience_orb"
         ));
+    }
+
+    public static Set<String> getDefaultServerThreadMods() {
+        return new HashSet<>(Set.of("openpartiesandclaims"));
     }
 
     public static int getParallelism() {
@@ -92,6 +98,26 @@ public class AsyncConfig {
         }
     }
 
+    public static void addServerThreadMod(String modId) {
+        if (serverThreadMods.add(modId)) {
+            ServerThreadMods.configure(serverThreadMods);
+            PlatformUtils.saveConfig();
+            LOGGER.info("Added server-thread mod: {}", modId);
+        } else {
+            LOGGER.warn("Server-thread mod already listed: {}", modId);
+        }
+    }
+
+    public static void removeServerThreadMod(String modId) {
+        if (serverThreadMods.remove(modId)) {
+            ServerThreadMods.configure(serverThreadMods);
+            PlatformUtils.saveConfig();
+            LOGGER.info("Removed server-thread mod: {}", modId);
+        } else {
+            LOGGER.warn("Server-thread mod not listed: {}", modId);
+        }
+    }
+
     private static void rebuildCaches() {
         syncCache.clear();
         exactEntities.clear();
@@ -128,6 +154,7 @@ public class AsyncConfig {
 
     public static void onConfigLoaded() {
         rebuildCaches();
+        ServerThreadMods.configure(serverThreadMods);
         LOGGER.info("Configuration loaded.");
     }
 

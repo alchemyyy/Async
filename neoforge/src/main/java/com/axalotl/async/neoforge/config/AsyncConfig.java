@@ -19,6 +19,7 @@ public class AsyncConfig {
     private static final ModConfigSpec.BooleanValue enableAsyncSpawn;
     private static final ModConfigSpec.BooleanValue enableAsyncRandomTicks;
     private static final ModConfigSpec.BooleanValue synchronizeUnannotatedModEntities;
+    private static final ModConfigSpec.ConfigValue<List<? extends String>> serverThreadMods;
 
     static {
         BUILDER.push("Async Config");
@@ -55,6 +56,17 @@ public class AsyncConfig {
                         com.axalotl.async.common.config.AsyncConfig.synchronizeUnannotatedModEntities
                 );
 
+        serverThreadMods = BUILDER.comment("""
+                        Mod IDs whose server-thread checks also pass on Async worker threads.
+                        For mods that skip their server logic for entities ticked in parallel, such as claim protection.
+                        Code from each listed mod runs on one thread at a time.""")
+                .defineListAllowEmpty(
+                        "serverThreadMods",
+                        () -> new ArrayList<>(com.axalotl.async.common.config.AsyncConfig.serverThreadMods),
+                        () -> "",
+                        obj -> obj instanceof String
+                );
+
         BUILDER.pop();
         SPEC = BUILDER.build();
         LOGGER.info("Configuration initialized.");
@@ -77,6 +89,7 @@ public class AsyncConfig {
         com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = entities.isEmpty()
                 ? getDefaultSynchronizedEntities()
                 : entities;
+        com.axalotl.async.common.config.AsyncConfig.serverThreadMods = new HashSet<>(serverThreadMods.get());
 
         com.axalotl.async.common.config.AsyncConfig.onConfigLoaded();
     }
@@ -90,6 +103,7 @@ public class AsyncConfig {
                 com.axalotl.async.common.config.AsyncConfig.synchronizeUnannotatedModEntities
         );
         synchronizedEntities.set(new ArrayList<>(com.axalotl.async.common.config.AsyncConfig.synchronizedEntities));
+        serverThreadMods.set(new ArrayList<>(com.axalotl.async.common.config.AsyncConfig.serverThreadMods));
         SPEC.save();
         com.axalotl.async.common.config.AsyncConfig.onConfigLoaded();
     }

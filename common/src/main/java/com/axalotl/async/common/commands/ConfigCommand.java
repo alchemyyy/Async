@@ -10,6 +10,7 @@ import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -32,6 +33,7 @@ public class ConfigCommand {
                 .then(buildAsyncEntitySpawnCommand())
                 .then(buildAsyncRandomTicksCommand())
                 .then(buildSynchronizeUnannotatedModEntitiesCommand())
+                .then(buildServerThreadModsCommand())
         );
     }
 
@@ -184,6 +186,33 @@ public class ConfigCommand {
                 );
     }
 
+    private static LiteralArgumentBuilder<CommandSourceStack> buildServerThreadModsCommand() {
+        return literal("serverThreadMods")
+                .executes(ctx -> {
+                    displayServerThreadMods(ctx);
+                    return 1;
+                })
+                .then(literal("add")
+                        .then(Commands.argument("modId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                        PlatformUtils.getModIds().stream()
+                                                .filter(modId -> !AsyncConfig.serverThreadMods.contains(modId)),
+                                        builder
+                                ))
+                                .executes(ConfigCommand::addServerThreadMod)
+                        )
+                )
+                .then(literal("remove")
+                        .then(Commands.argument("modId", StringArgumentType.word())
+                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                        AsyncConfig.serverThreadMods,
+                                        builder
+                                ))
+                                .executes(ConfigCommand::removeServerThreadMod)
+                        )
+                );
+    }
+
     private static void displaySynchronizedEntities(CommandContext<CommandSourceStack> ctx) {
         Set<String> entities = AsyncConfig.synchronizedEntities;
         MutableComponent message = prefix.copy()
@@ -203,6 +232,62 @@ public class ConfigCommand {
         }
 
         ctx.getSource().sendSuccess(() -> message, false);
+    }
+
+    private static void displayServerThreadMods(CommandContext<CommandSourceStack> ctx) {
+        Set<String> modIds = AsyncConfig.serverThreadMods;
+        MutableComponent message = prefix.copy()
+                .append(Component.literal("Server-thread mods: ")
+                        .withStyle(style -> style.withColor(ChatFormatting.WHITE)));
+
+        if (modIds.isEmpty()) {
+            message.append(Component.literal("No mods listed.")
+                    .withStyle(style -> style.withColor(ChatFormatting.RED)));
+        } else {
+            message.append(Component.literal("\n"));
+            modIds.forEach(modId -> {
+                message.append(Component.literal("- ").withStyle(style -> style.withColor(ChatFormatting.GREEN)))
+                        .append(Component.literal(modId).withStyle(style -> style.withColor(ChatFormatting.YELLOW)));
+                if (!PlatformUtils.isModLoaded(modId)) {
+                    message.append(Component.literal(" (not installed)")
+                            .withStyle(style -> style.withColor(ChatFormatting.GRAY)));
+                }
+                message.append(Component.literal("\n"));
+            });
+        }
+
+        ctx.getSource().sendSuccess(() -> message, false);
+    }
+
+    private static int addServerThreadMod(CommandContext<CommandSourceStack> ctx) {
+        String modId = StringArgumentType.getString(ctx, "modId");
+
+        if (!PlatformUtils.isModLoaded(modId)) {
+            sendErrorMessage(ctx, "Error mod ", modId, " is not installed.");
+            return 1;
+        }
+
+        if (AsyncConfig.serverThreadMods.contains(modId)) {
+            sendErrorMessage(ctx, "Error mod ", modId, " is already a server-thread mod.");
+            return 1;
+        }
+
+        AsyncConfig.addServerThreadMod(modId);
+        sendMessage(ctx, "Mod ", modId, " has been added to the server-thread mods.");
+        return 1;
+    }
+
+    private static int removeServerThreadMod(CommandContext<CommandSourceStack> ctx) {
+        String modId = StringArgumentType.getString(ctx, "modId");
+
+        if (!AsyncConfig.serverThreadMods.contains(modId)) {
+            sendErrorMessage(ctx, "Error mod ", modId, " is not a server-thread mod.");
+            return 1;
+        }
+
+        AsyncConfig.removeServerThreadMod(modId);
+        sendMessage(ctx, "Mod ", modId, " has been removed from the server-thread mods.");
+        return 1;
     }
 
     private static int addEntity(CommandContext<CommandSourceStack> ctx) {

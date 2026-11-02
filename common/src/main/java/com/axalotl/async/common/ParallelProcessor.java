@@ -135,10 +135,13 @@ public class ParallelProcessor {
         if (task == null) {
             return;
         }
+        int scope = ServerThreadMods.enter();
         try {
             task.run();
         } catch (Throwable throwable) {
             LOGGER.error("Error in pool task", throwable);
+        } finally {
+            ServerThreadMods.exit(scope);
         }
     }
 
@@ -356,11 +359,16 @@ public class ParallelProcessor {
             );
         }
 
-        ParallelBatch batch = submitParallel(work);
-        synchronousEntities.forEach(
-                entity -> tickOne(world, entity, false, despawnChecksEnabled)
-        );
-        finishParallel(batch);
+        ServerThreadMods.beginParallelPhase();
+        try {
+            ParallelBatch batch = submitParallel(work);
+            synchronousEntities.forEach(
+                    entity -> tickOne(world, entity, false, despawnChecksEnabled)
+            );
+            finishParallel(batch);
+        } finally {
+            ServerThreadMods.endParallelPhase();
+        }
 
         // Sable mutates sub-level and native physics state without synchronization, so entities that
         // reach it tick only after every worker tick of this batch has finished.
@@ -378,16 +386,22 @@ public class ParallelProcessor {
         if (entity.isRemoved()) {
             return;
         }
-        if (checkDespawn) {
-            checkDespawn(entity);
+        int scope = ServerThreadMods.enter();
+        try {
+            if (checkDespawn) {
+                checkDespawn(entity);
+            }
+            tickEntity(world, entity, asynchronous);
+        } finally {
+            ServerThreadMods.exit(scope);
         }
-        tickEntity(world, entity, asynchronous);
     }
 
     private static void checkDespawn(Entity entity) {
         if (entity.isRemoved()) {
             return;
         }
+        int scope = ServerThreadMods.enter();
         try {
             entity.checkDespawn();
         } catch (Exception exception) {
@@ -397,6 +411,8 @@ public class ParallelProcessor {
                     entity.getUUID(),
                     exception
             );
+        } finally {
+            ServerThreadMods.exit(scope);
         }
     }
 
@@ -543,14 +559,19 @@ public class ParallelProcessor {
     /**
      * Runs one pending chunk task per level and returns whether any level had work.
      */
-    private static boolean pumpChunkTasks() {
+    static boolean pumpChunkTasks() {
         MinecraftServer minecraftServer = server;
         if (minecraftServer == null) {
             return false;
         }
         boolean ranTask = false;
         for (ServerLevel level : minecraftServer.getAllLevels()) {
-            ranTask |= level.getChunkSource().pollTask();
+            int scope = ServerThreadMods.enter();
+            try {
+                ranTask |= level.getChunkSource().pollTask();
+            } finally {
+                ServerThreadMods.exit(scope);
+            }
         }
         return ranTask;
     }
